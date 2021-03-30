@@ -5,6 +5,7 @@ use wasm_bindgen::JsCast;
 use wasm_bindgen::JsValue;
 use web_sys::{HtmlCanvasElement, WebGlProgram, WebGlRenderingContext};
 
+use crate::dom;
 use crate::webgl::*;
 
 struct Dot {
@@ -137,14 +138,8 @@ impl App {
     }
 }
 
-fn request_animation_frame(f: &Closure<dyn FnMut()>) {
-    web_sys::window()
-        .unwrap()
-        .request_animation_frame(f.as_ref().unchecked_ref())
-        .unwrap();
-}
-
 #[wasm_bindgen]
+#[allow(dead_code)]
 pub fn tracer() -> Result<(), JsValue> {
     let document = web_sys::window().unwrap().document().unwrap();
     let canvas = document.get_element_by_id("canvas").unwrap();
@@ -156,37 +151,26 @@ pub fn tracer() -> Result<(), JsValue> {
 
     {
         let app = app.clone();
-        let closure = Closure::wrap(Box::new(move |e: web_sys::MouseEvent| {
+        dom::add_mouse_event_listener(&canvas, "mousemove", move |e| {
             let x = e.client_x() as f32 / client_width * 2.0 - 1.0;
             let y = e.client_y() as f32 / client_height * -2.0 + 1.0;
             app.borrow_mut().add_dot((x, y));
-        }) as Box<dyn FnMut(_)>);
-        canvas.add_event_listener_with_callback("mousemove", closure.as_ref().unchecked_ref())?;
-        closure.forget();
+        });
     }
 
     {
         let app = app.clone();
-        let closure = Closure::wrap(Box::new(move |e: web_sys::MouseEvent| {
+        dom::add_mouse_event_listener(&canvas, "mousedown", move |e| {
             let x = e.client_x() as f32 / client_width * 2.0 - 1.0;
             let y = e.client_y() as f32 / client_height * -2.0 + 1.0;
             app.borrow_mut().add_click_dot((x, y));
-        }) as Box<dyn FnMut(_)>);
-        canvas.add_event_listener_with_callback("mousedown", closure.as_ref().unchecked_ref())?;
-        closure.forget();
+        });
     }
 
-    {
-        let f = Rc::new(RefCell::new(None));
-        let g = f.clone();
-        let app = app.clone();
-        *g.borrow_mut() = Some(Closure::wrap(Box::new(move || {
-            app.borrow_mut().step();
-            app.borrow().render();
-            request_animation_frame(f.borrow().as_ref().unwrap());
-        }) as Box<dyn FnMut()>));
-        request_animation_frame(g.borrow().as_ref().unwrap());
-    }
+    dom::request_animation_frame(move || {
+        app.borrow_mut().step();
+        app.borrow().render();
+    });
 
     Ok(())
 }

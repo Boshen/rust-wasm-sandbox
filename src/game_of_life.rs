@@ -1,8 +1,9 @@
 use std::cell::RefCell;
-use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
+
+use crate::dom;
 
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -190,21 +191,11 @@ impl Canvas {
     }
 }
 
-fn request_animation_frame(f: &Closure<dyn FnMut()>) {
-    web_sys::window()
-        .unwrap()
-        .request_animation_frame(f.as_ref().unchecked_ref())
-        .unwrap();
-}
-
 #[wasm_bindgen]
+#[allow(dead_code)]
 pub fn game_of_life() {
-    let mut canvas = Canvas::new();
-    let f = Rc::new(RefCell::new(None));
-    let g = f.clone();
-    *g.borrow_mut() = Some(Closure::wrap(Box::new(move || {
-        canvas.render();
-        request_animation_frame(f.borrow().as_ref().unwrap());
-    }) as Box<dyn FnMut()>));
-    request_animation_frame(g.borrow().as_ref().unwrap());
+    let canvas = RefCell::new(Canvas::new());
+    dom::request_animation_frame(move || {
+        canvas.borrow_mut().render();
+    });
 }
