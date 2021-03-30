@@ -197,8 +197,8 @@ fn request_animation_frame(f: &Closure<dyn FnMut()>) {
         .unwrap();
 }
 
-#[wasm_bindgen(start)]
-pub fn start() {
+#[wasm_bindgen]
+pub fn game_of_life() {
     let mut canvas = Canvas::new();
     let f = Rc::new(RefCell::new(None));
     let g = f.clone();
