@@ -53,6 +53,22 @@ where
     run_request_animation_frame(g.borrow().as_ref().unwrap());
 }
 
+pub fn set_interval<F>(interval: i32, callback: F)
+where
+    F: Fn() + 'static,
+{
+    let closure = Closure::wrap(Box::new(move || {
+        callback();
+    }) as Box<dyn FnMut()>);
+    window()
+        .set_interval_with_callback_and_timeout_and_arguments_0(
+            closure.as_ref().unchecked_ref(),
+            interval,
+        )
+        .unwrap();
+    closure.forget();
+}
+
 pub fn add_mouse_event_listener<F>(canvas: &HtmlCanvasElement, event: &str, callback: F)
 where
     F: Fn(web_sys::MouseEvent) + 'static,

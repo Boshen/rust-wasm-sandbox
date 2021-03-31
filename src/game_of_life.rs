@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use web_sys::CanvasRenderingContext2d;
 
@@ -168,8 +169,11 @@ impl Canvas {
         self.ctx.stroke();
     }
 
-    pub fn render(&mut self) {
+    pub fn step(&mut self) {
         self.universe.tick();
+    }
+
+    pub fn render(&self) {
         self.draw_grid();
         self.draw_cells();
     }
@@ -177,9 +181,20 @@ impl Canvas {
 
 #[wasm_bindgen]
 #[allow(dead_code)]
-pub fn game_of_life() {
-    let canvas = RefCell::new(Canvas::new());
+pub fn game_of_life() -> Result<(), JsValue> {
+    let canvas = Canvas::new();
+    let canvas = Rc::new(RefCell::new(canvas));
+
+    {
+        let canvas = canvas.clone();
+        dom::set_interval(50, move || {
+            canvas.borrow_mut().step();
+        });
+    }
+
     dom::request_animation_frame(move |_dt| {
-        canvas.borrow_mut().render();
+        canvas.borrow().render();
     });
+
+    Ok(())
 }
