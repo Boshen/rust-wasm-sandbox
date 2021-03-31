@@ -14,6 +14,7 @@ struct Dot {
     dx: f32,
     dy: f32,
     alpha: f32,
+    color: [f32; 3],
 }
 
 impl Default for Dot {
@@ -25,6 +26,7 @@ impl Default for Dot {
             dx: 0.0,
             dy: 0.0,
             alpha: 1.0,
+            color: [1.0, 0.0, 0.0],
         }
     }
 }
@@ -36,6 +38,7 @@ struct App {
     attributes: Vec<Attribute>,
     mouse_down: bool,
     mouse_xy: (f32, f32),
+    n: i32,
 }
 
 impl App {
@@ -46,24 +49,28 @@ impl App {
         uniform vec2 u_translation;
         uniform float u_scale;
         uniform float u_alpha;
+        uniform vec3 u_color;
         varying float v_alpha;
+        varying vec3 v_color;
         void main() {
           vec2 position = a_position + u_translation;
-          v_alpha = u_alpha;
           gl_Position = vec4(position.xy, 0.0, 1.0);
           gl_PointSize = u_scale;
+          v_alpha = u_alpha;
+          v_color = u_color;
         }
     "#;
         let frag_source = r#"
         precision mediump float;
         varying float v_alpha;
+        varying vec3 v_color;
         void main() {
           vec2 cxy = 2.0 * gl_PointCoord - 1.0;
           float r = dot(cxy, cxy);
           if (r > 1.0) {
               discard;
           }
-          gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+          gl_FragColor = vec4(v_color, 1.0);
         }
     "#;
         let program = create_program(&gl, &vertex_source, &frag_source)?;
@@ -84,31 +91,57 @@ impl App {
             attributes: vec![attribute],
             mouse_down: false,
             mouse_xy: (0.0, 0.0),
+            n: 0,
         })
     }
 
     fn set_translation(&self, dot: &Dot) {
-        let translation_location = self
-            .gl
-            .get_uniform_location(&self.program, "u_translation".into())
-            .unwrap();
-        self.gl.uniform2f(Some(&translation_location), dot.x, dot.y);
+        self.gl.uniform2f(
+            Some(
+                &self
+                    .gl
+                    .get_uniform_location(&self.program, "u_translation")
+                    .unwrap(),
+            ),
+            dot.x,
+            dot.y,
+        );
     }
 
     fn set_scale(&self, dot: &Dot) {
-        let scale_location = self
-            .gl
-            .get_uniform_location(&self.program, "u_scale".into())
-            .unwrap();
-        self.gl.uniform1f(Some(&scale_location), dot.r);
+        self.gl.uniform1f(
+            Some(
+                &self
+                    .gl
+                    .get_uniform_location(&self.program, "u_scale")
+                    .unwrap(),
+            ),
+            dot.r,
+        );
     }
 
     fn set_alpha(&self, dot: &Dot) {
-        let scale_location = self
-            .gl
-            .get_uniform_location(&self.program, "u_alpha".into())
-            .unwrap();
-        self.gl.uniform1f(Some(&scale_location), dot.alpha);
+        self.gl.uniform1f(
+            Some(
+                &self
+                    .gl
+                    .get_uniform_location(&self.program, "u_alpha")
+                    .unwrap(),
+            ),
+            dot.alpha,
+        );
+    }
+
+    fn set_color(&self, dot: &Dot) {
+        self.gl.uniform3fv_with_f32_array(
+            Some(
+                &self
+                    .gl
+                    .get_uniform_location(&self.program, "u_color")
+                    .unwrap(),
+            ),
+            &dot.color,
+        );
     }
 
     pub fn set_mouse_xy(&mut self, mouse_xy: (f32, f32)) {
@@ -119,11 +152,28 @@ impl App {
         self.mouse_down = is_down;
     }
 
+    fn osc(&self, n: i32) -> i32 {
+        if n <= 255 {
+            n
+        } else {
+            255 - (n % 255)
+        }
+    }
+
+    fn get_color(&self) -> [f32; 3] {
+        [
+            self.osc(3 * self.n % 510) as f32 / 255.0,
+            self.osc(5 * self.n % 510) as f32 / 255.0,
+            self.osc(7 * self.n % 510) as f32 / 255.0,
+        ]
+    }
+
     pub fn add_dot(&mut self) {
         let (x, y) = self.mouse_xy;
         self.dots.push(Dot {
             x,
             y,
+            color: self.get_color(),
             ..Dot::default()
         });
     }
@@ -141,6 +191,7 @@ impl App {
                 y,
                 dx: 0.005 * (n as f32 * theta).cos(),
                 dy: 0.005 * (n as f32 * theta).sin(),
+                color: self.get_color(),
                 ..Dot::default()
             });
         })
@@ -160,6 +211,7 @@ impl App {
     }
 
     pub fn step(&mut self) {
+        self.n += 1;
         self.add_dot();
         self.add_click_dot();
         self.update_dots();
@@ -177,6 +229,7 @@ impl App {
             self.set_translation(dot);
             self.set_scale(dot);
             self.set_alpha(dot);
+            self.set_color(dot);
             self.gl.draw_arrays(WebGlRenderingContext::POINTS, 0, 1);
         })
     }
