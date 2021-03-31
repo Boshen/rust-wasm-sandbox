@@ -1,7 +1,6 @@
 use std::cell::RefCell;
 use wasm_bindgen::prelude::*;
-use wasm_bindgen::JsCast;
-use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
+use web_sys::CanvasRenderingContext2d;
 
 use crate::dom;
 
@@ -19,10 +18,7 @@ pub struct Universe {
 }
 
 impl Universe {
-    pub fn new() -> Universe {
-        let width = 64;
-        let height = 64;
-
+    pub fn new(width: u32, height: u32) -> Universe {
         let cells = (0..width * height)
             .map(|i| {
                 if i % 2 == 0 || i % 7 == 0 {
@@ -108,25 +104,13 @@ struct Canvas {
 
 impl Canvas {
     pub fn new() -> Canvas {
-        let document = web_sys::window().unwrap().document().unwrap();
-        let canvas = document.get_element_by_id("canvas").unwrap();
-        let canvas: HtmlCanvasElement = canvas
-            .dyn_into::<HtmlCanvasElement>()
-            .map_err(|_| ())
-            .unwrap();
-        let ctx = canvas
-            .get_context("2d")
-            .unwrap()
-            .unwrap()
-            .dyn_into::<CanvasRenderingContext2d>()
-            .unwrap();
+        let canvas = dom::canvas("canvas");
+        let ctx = dom::canvas_context::<CanvasRenderingContext2d>(&canvas, "2d");
 
-        let universe = Universe::new();
-        let cell_size = 5;
-        let width = (cell_size + 1) * universe.width + 1;
-        let height = (cell_size + 1) * universe.height + 1;
-        canvas.set_width(width);
-        canvas.set_height(height);
+        let cell_size = 20;
+        let width = canvas.client_width() as u32 / cell_size;
+        let height = canvas.client_height() as u32 / cell_size;
+        let universe = Universe::new(64, 64);
 
         Canvas {
             grid_color: "#CCCCCC",

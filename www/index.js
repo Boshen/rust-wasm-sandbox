@@ -7,6 +7,8 @@ const linksDiv =  document.getElementById("links")
 canvasDiv.style.display = 'none'
 
 const run = () => {
+  canvasDiv.width = window.innerWidth
+  canvasDiv.height = window.innerHeight
   canvasDiv.style.display = 'block'
   linksDiv.style.display = 'none'
 }

@@ -1,9 +1,8 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
-use wasm_bindgen::JsCast;
 use wasm_bindgen::JsValue;
-use web_sys::{HtmlCanvasElement, WebGlProgram, WebGlRenderingContext};
+use web_sys::{WebGlProgram, WebGlRenderingContext};
 
 use crate::dom;
 use crate::webgl::*;
@@ -141,11 +140,10 @@ impl App {
 #[wasm_bindgen]
 #[allow(dead_code)]
 pub fn tracer() -> Result<(), JsValue> {
-    let document = web_sys::window().unwrap().document().unwrap();
-    let canvas = document.get_element_by_id("canvas").unwrap();
-    let canvas: HtmlCanvasElement = canvas.dyn_into::<HtmlCanvasElement>()?;
     let app = App::new()?;
     let app = Rc::new(RefCell::new(app));
+
+    let canvas = dom::canvas("canvas");
     let client_width = canvas.client_width() as f32;
     let client_height = canvas.client_height() as f32;
 

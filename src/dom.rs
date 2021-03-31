@@ -4,6 +4,32 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys::HtmlCanvasElement;
 
+pub fn window() -> web_sys::Window {
+    web_sys::window().unwrap()
+}
+
+pub fn document() -> web_sys::Document {
+    window().document().unwrap()
+}
+
+pub fn canvas(id: &str) -> HtmlCanvasElement {
+    document()
+        .get_element_by_id(id)
+        .unwrap()
+        .dyn_into::<HtmlCanvasElement>()
+        .map_err(|_| ())
+        .unwrap()
+}
+
+pub fn canvas_context<T: JsCast>(canvas: &HtmlCanvasElement, ctx: &str) -> T {
+    canvas
+        .get_context(ctx)
+        .unwrap()
+        .unwrap()
+        .dyn_into::<T>()
+        .unwrap()
+}
+
 fn run_request_animation_frame(f: &Closure<dyn FnMut()>) {
     web_sys::window()
         .unwrap()
