@@ -78,6 +78,7 @@ impl App {
         let buffer = create_buffer(&gl)?;
         gl.bind_buffer(WebGlRenderingContext::ARRAY_BUFFER, Some(&buffer));
         buffer_data(&gl, &vec![0.0, 0.0]);
+
         let attribute = Attribute {
             name: "a_position".into(),
             num_of_components: 2,
@@ -122,14 +123,6 @@ impl App {
             Some(&self.gl.get_uniform_location(&self.program, "u_color").unwrap()),
             &dot.color,
         );
-    }
-
-    pub fn set_mouse_xy(&mut self, mouse_xy: (f32, f32)) {
-        self.mouse_xy = mouse_xy;
-    }
-
-    pub fn set_mousedown(&mut self, is_down: bool) {
-        self.mouse_down = is_down;
     }
 
     fn osc(&self, n: i32) -> i32 {
@@ -190,6 +183,14 @@ impl App {
         self.dots.retain(|d| d.r > 0.0)
     }
 
+    pub fn set_mouse_xy(&mut self, mouse_xy: (f32, f32)) {
+        self.mouse_xy = mouse_xy;
+    }
+
+    pub fn set_mousedown(&mut self, is_down: bool) {
+        self.mouse_down = is_down;
+    }
+
     pub fn step(&mut self) {
         self.n += 1;
         self.add_dot();
@@ -200,11 +201,8 @@ impl App {
 
     pub fn render(&self) {
         clear_gl(&self.gl);
-
         self.gl.use_program(Some(&self.program));
-
         set_attributes(&self.gl, &self.program, &self.attributes);
-
         self.dots.iter().for_each(|dot| {
             self.set_translation(dot);
             self.set_scale(dot);
