@@ -32,10 +32,11 @@ impl Default for Dot {
 }
 
 struct App {
-    dots: Vec<Dot>,
     gl: WebGlRenderingContext,
     program: WebGlProgram,
     attributes: Vec<Attribute>,
+
+    dots: Vec<Dot>,
     mouse_down: bool,
     mouse_xy: (f32, f32),
     n: i32,
@@ -220,8 +221,8 @@ pub fn tracer() -> Result<(), JsValue> {
     {
         let app = app.clone();
         dom::add_mouse_event_listener(&canvas, "mousemove", move |e| {
-            let x = e.client_x() as f32 / client_width * 2.0 - 1.0;
-            let y = e.client_y() as f32 / client_height * -2.0 + 1.0;
+            let x = e.offset_x() as f32 / client_width * 2.0 - 1.0;
+            let y = e.offset_y() as f32 / client_height * -2.0 + 1.0;
             app.borrow_mut().set_mouse_xy((x, y));
         });
     }
