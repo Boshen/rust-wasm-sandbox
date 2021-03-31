@@ -20,6 +20,8 @@ struct App {
     gl: WebGlRenderingContext,
     program: WebGlProgram,
     attributes: Vec<Attribute>,
+    mouse_down: bool,
+    mouse_xy: (f32, f32),
 }
 
 impl App {
@@ -61,7 +63,9 @@ impl App {
             dots: vec![],
             gl,
             program,
-            attributes: vec![attribute], // buffer,
+            attributes: vec![attribute],
+            mouse_down: false,
+            mouse_xy: (0.0, 0.0),
         })
     }
 
@@ -81,7 +85,16 @@ impl App {
         self.gl.uniform1f(Some(&scale_location), dot.r);
     }
 
-    pub fn add_dot(&mut self, (x, y): (f32, f32)) {
+    pub fn set_mouse_xy(&mut self, mouse_xy: (f32, f32)) {
+        self.mouse_xy = mouse_xy;
+    }
+
+    pub fn set_mousedown(&mut self, is_down: bool) {
+        self.mouse_down = is_down;
+    }
+
+    pub fn add_dot(&mut self) {
+        let (x, y) = self.mouse_xy;
         self.dots.push(Dot {
             x,
             y,
@@ -91,7 +104,11 @@ impl App {
         });
     }
 
-    pub fn add_click_dot(&mut self, (x, y): (f32, f32)) {
+    pub fn add_click_dot(&mut self) {
+        if !self.mouse_down {
+            return;
+        }
+        let (x, y) = self.mouse_xy;
         let turns = 16 as usize;
         let theta = 360.0 / turns as f32;
         (0..turns).into_iter().for_each(|n| {
@@ -118,6 +135,8 @@ impl App {
     }
 
     pub fn step(&mut self) {
+        self.add_dot();
+        self.add_click_dot();
         self.update_dots();
         self.remove_dots();
     }
@@ -152,16 +171,21 @@ pub fn tracer() -> Result<(), JsValue> {
         dom::add_mouse_event_listener(&canvas, "mousemove", move |e| {
             let x = e.client_x() as f32 / client_width * 2.0 - 1.0;
             let y = e.client_y() as f32 / client_height * -2.0 + 1.0;
-            app.borrow_mut().add_dot((x, y));
+            app.borrow_mut().set_mouse_xy((x, y));
         });
     }
 
     {
         let app = app.clone();
-        dom::add_mouse_event_listener(&canvas, "mousedown", move |e| {
-            let x = e.client_x() as f32 / client_width * 2.0 - 1.0;
-            let y = e.client_y() as f32 / client_height * -2.0 + 1.0;
-            app.borrow_mut().add_click_dot((x, y));
+        dom::add_mouse_event_listener(&canvas, "mousedown", move |_e| {
+            app.borrow_mut().set_mousedown(true);
+        });
+    }
+
+    {
+        let app = app.clone();
+        dom::add_mouse_event_listener(&canvas, "mouseup", move |_e| {
+            app.borrow_mut().set_mousedown(false);
         });
     }
 
