@@ -13,6 +13,20 @@ struct Dot {
     r: f32,
     dx: f32,
     dy: f32,
+    alpha: f32,
+}
+
+impl Default for Dot {
+    fn default() -> Self {
+        Dot {
+            x: 0.0,
+            y: 0.0,
+            r: 10.0,
+            dx: 0.0,
+            dy: 0.0,
+            alpha: 1.0,
+        }
+    }
 }
 
 struct App {
@@ -31,14 +45,18 @@ impl App {
         attribute vec2 a_position;
         uniform vec2 u_translation;
         uniform float u_scale;
+        uniform float u_alpha;
+        varying float v_alpha;
         void main() {
           vec2 position = a_position + u_translation;
+          v_alpha = u_alpha;
           gl_Position = vec4(position.xy, 0.0, 1.0);
           gl_PointSize = u_scale;
         }
     "#;
         let frag_source = r#"
         precision mediump float;
+        varying float v_alpha;
         void main() {
           vec2 cxy = 2.0 * gl_PointCoord - 1.0;
           float r = dot(cxy, cxy);
@@ -85,6 +103,14 @@ impl App {
         self.gl.uniform1f(Some(&scale_location), dot.r);
     }
 
+    fn set_alpha(&self, dot: &Dot) {
+        let scale_location = self
+            .gl
+            .get_uniform_location(&self.program, "u_alpha".into())
+            .unwrap();
+        self.gl.uniform1f(Some(&scale_location), dot.alpha);
+    }
+
     pub fn set_mouse_xy(&mut self, mouse_xy: (f32, f32)) {
         self.mouse_xy = mouse_xy;
     }
@@ -98,9 +124,7 @@ impl App {
         self.dots.push(Dot {
             x,
             y,
-            r: 10.0,
-            dx: 0.0,
-            dy: 0.0,
+            ..Dot::default()
         });
     }
 
@@ -109,15 +133,15 @@ impl App {
             return;
         }
         let (x, y) = self.mouse_xy;
-        let turns = 16 as usize;
-        let theta = 360.0 / turns as f32;
+        let turns = 12 as usize;
+        let theta = std::f32::consts::TAU / turns as f32;
         (0..turns).into_iter().for_each(|n| {
             self.dots.push(Dot {
                 x,
                 y,
-                r: 10.0,
                 dx: 0.005 * (n as f32 * theta).cos(),
                 dy: 0.005 * (n as f32 * theta).sin(),
+                ..Dot::default()
             });
         })
     }
@@ -126,7 +150,8 @@ impl App {
         self.dots.iter_mut().for_each(|dot| {
             dot.r -= 0.1;
             dot.x += dot.dx;
-            dot.y += dot.dy
+            dot.y += dot.dy;
+            dot.alpha -= 0.02;
         })
     }
 
@@ -151,6 +176,7 @@ impl App {
         self.dots.iter().for_each(|dot| {
             self.set_translation(dot);
             self.set_scale(dot);
+            self.set_alpha(dot);
             self.gl.draw_arrays(WebGlRenderingContext::POINTS, 0, 1);
         })
     }
