@@ -165,7 +165,7 @@ pub fn tracer() -> Result<(), JsValue> {
         });
     }
 
-    dom::request_animation_frame(move || {
+    dom::request_animation_frame(move |_dt| {
         app.borrow_mut().step();
         app.borrow().render();
     });

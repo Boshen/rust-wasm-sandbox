@@ -179,7 +179,7 @@ impl Canvas {
 #[allow(dead_code)]
 pub fn game_of_life() {
     let canvas = RefCell::new(Canvas::new());
-    dom::request_animation_frame(move || {
+    dom::request_animation_frame(move |_dt| {
         canvas.borrow_mut().render();
     });
 }

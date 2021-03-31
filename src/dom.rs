@@ -30,7 +30,7 @@ pub fn canvas_context<T: JsCast>(canvas: &HtmlCanvasElement, ctx: &str) -> T {
         .unwrap()
 }
 
-fn run_request_animation_frame(f: &Closure<dyn FnMut()>) {
+fn run_request_animation_frame(f: &Closure<dyn FnMut(f32)>) {
     web_sys::window()
         .unwrap()
         .request_animation_frame(f.as_ref().unchecked_ref())
@@ -39,14 +39,17 @@ fn run_request_animation_frame(f: &Closure<dyn FnMut()>) {
 
 pub fn request_animation_frame<F>(callback: F)
 where
-    F: Fn() + 'static,
+    F: Fn(f32) + 'static,
 {
-    let f = Rc::new(RefCell::new(None));
+    let mut past_time = 0.0;
+    let f: Rc<RefCell<Option<Closure<dyn FnMut(f32)>>>> = Rc::new(RefCell::new(None));
     let g = f.clone();
-    *g.borrow_mut() = Some(Closure::wrap(Box::new(move || {
-        callback();
+    *g.borrow_mut() = Some(Closure::wrap(Box::new(move |t: f32| {
+        let now = t * 0.001;
+        callback(now - past_time);
+        past_time = now;
         run_request_animation_frame(f.borrow().as_ref().unwrap());
-    }) as Box<dyn FnMut()>));
+    }) as Box<dyn FnMut(f32)>));
     run_request_animation_frame(g.borrow().as_ref().unwrap());
 }
 
