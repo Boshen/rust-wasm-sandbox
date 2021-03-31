@@ -2,6 +2,7 @@ mod dom;
 mod webgl;
 
 mod game_of_life;
+mod mendelbrot;
 mod tracer;
 
 #[cfg(feature = "wee_alloc")]
