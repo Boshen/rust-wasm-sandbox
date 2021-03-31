@@ -22,11 +22,7 @@ pub fn init_gl() -> Result<WebGlRenderingContext, JsValue> {
     Ok(gl)
 }
 
-pub fn compile_shader(
-    gl: &WebGlRenderingContext,
-    shader_type: u32,
-    source: &str,
-) -> Result<WebGlShader, String> {
+pub fn compile_shader(gl: &WebGlRenderingContext, shader_type: u32, source: &str) -> Result<WebGlShader, String> {
     let shader = gl
         .create_shader(shader_type)
         .ok_or_else(|| String::from("Unable to create shader object"))?;
@@ -85,8 +81,7 @@ pub fn create_program(
 }
 
 pub fn create_buffer(gl: &WebGlRenderingContext) -> Result<WebGlBuffer, String> {
-    gl.create_buffer()
-        .ok_or("failed to create buffer".to_string())
+    gl.create_buffer().ok_or("failed to create buffer".to_string())
 }
 
 pub fn buffer_data(gl: &WebGlRenderingContext, vertices: &Vec<f32>) {
@@ -108,11 +103,7 @@ pub fn clear_gl(gl: &WebGlRenderingContext) {
     gl.depth_func(WebGlRenderingContext::LEQUAL);
 }
 
-pub fn set_attributes(
-    gl: &WebGlRenderingContext,
-    program: &WebGlProgram,
-    attributes: &Vec<Attribute>,
-) {
+pub fn set_attributes(gl: &WebGlRenderingContext, program: &WebGlProgram, attributes: &Vec<Attribute>) {
     attributes.iter().for_each(|attribute| {
         let attribute_location = gl.get_attrib_location(program, attribute.name) as u32;
         gl.enable_vertex_attrib_array(attribute_location);

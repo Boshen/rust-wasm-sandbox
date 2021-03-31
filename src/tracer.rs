@@ -97,12 +97,7 @@ impl App {
 
     fn set_translation(&self, dot: &Dot) {
         self.gl.uniform2f(
-            Some(
-                &self
-                    .gl
-                    .get_uniform_location(&self.program, "u_translation")
-                    .unwrap(),
-            ),
+            Some(&self.gl.get_uniform_location(&self.program, "u_translation").unwrap()),
             dot.x,
             dot.y,
         );
@@ -110,36 +105,21 @@ impl App {
 
     fn set_scale(&self, dot: &Dot) {
         self.gl.uniform1f(
-            Some(
-                &self
-                    .gl
-                    .get_uniform_location(&self.program, "u_scale")
-                    .unwrap(),
-            ),
+            Some(&self.gl.get_uniform_location(&self.program, "u_scale").unwrap()),
             dot.r,
         );
     }
 
     fn set_alpha(&self, dot: &Dot) {
         self.gl.uniform1f(
-            Some(
-                &self
-                    .gl
-                    .get_uniform_location(&self.program, "u_alpha")
-                    .unwrap(),
-            ),
+            Some(&self.gl.get_uniform_location(&self.program, "u_alpha").unwrap()),
             dot.alpha,
         );
     }
 
     fn set_color(&self, dot: &Dot) {
         self.gl.uniform3fv_with_f32_array(
-            Some(
-                &self
-                    .gl
-                    .get_uniform_location(&self.program, "u_color")
-                    .unwrap(),
-            ),
+            Some(&self.gl.get_uniform_location(&self.program, "u_color").unwrap()),
             &dot.color,
         );
     }

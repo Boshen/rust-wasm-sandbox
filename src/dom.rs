@@ -22,12 +22,7 @@ pub fn canvas(id: &str) -> HtmlCanvasElement {
 }
 
 pub fn canvas_context<T: JsCast>(canvas: &HtmlCanvasElement, ctx: &str) -> T {
-    canvas
-        .get_context(ctx)
-        .unwrap()
-        .unwrap()
-        .dyn_into::<T>()
-        .unwrap()
+    canvas.get_context(ctx).unwrap().unwrap().dyn_into::<T>().unwrap()
 }
 
 fn run_request_animation_frame(f: &Closure<dyn FnMut(f32)>) {
@@ -61,10 +56,7 @@ where
         callback();
     }) as Box<dyn FnMut()>);
     window()
-        .set_interval_with_callback_and_timeout_and_arguments_0(
-            closure.as_ref().unchecked_ref(),
-            interval,
-        )
+        .set_interval_with_callback_and_timeout_and_arguments_0(closure.as_ref().unchecked_ref(), interval)
         .unwrap();
     closure.forget();
 }

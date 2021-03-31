@@ -30,11 +30,7 @@ impl Universe {
             })
             .collect();
 
-        Universe {
-            width,
-            height,
-            cells,
-        }
+        Universe { width, height, cells }
     }
 
     pub fn tick(&mut self) {
@@ -127,8 +123,7 @@ impl Canvas {
 
     pub fn draw_grid(&self) {
         self.ctx.begin_path();
-        self.ctx
-            .set_stroke_style(&JsValue::from_str(self.grid_color));
+        self.ctx.set_stroke_style(&JsValue::from_str(self.grid_color));
         (0..self.width).for_each(|i| {
             self.ctx.move_to((i * (self.cell_size + 1) + 1).into(), 0.0);
             self.ctx.line_to(
