@@ -48,29 +48,23 @@ impl App {
         attribute vec2 a_position;
         uniform vec2 u_translation;
         uniform float u_scale;
-        uniform float u_alpha;
-        uniform vec3 u_color;
-        varying float v_alpha;
-        varying vec3 v_color;
         void main() {
           vec2 position = a_position + u_translation;
           gl_Position = vec4(position.xy, 0.0, 1.0);
           gl_PointSize = u_scale;
-          v_alpha = u_alpha;
-          v_color = u_color;
         }
     "#;
         let frag_source = r#"
         precision mediump float;
-        varying float v_alpha;
-        varying vec3 v_color;
+        uniform float u_alpha;
+        uniform vec3 u_color;
         void main() {
           vec2 cxy = 2.0 * gl_PointCoord - 1.0;
           float r = dot(cxy, cxy);
           if (r > 1.0) {
               discard;
           }
-          gl_FragColor = vec4(v_color, 1.0);
+          gl_FragColor = vec4(u_color, u_alpha);
         }
     "#;
         let program = create_program(&gl, &vertex_source, &frag_source)?;
@@ -175,7 +169,7 @@ impl App {
             dot.r -= 0.1;
             dot.x += dot.dx;
             dot.y += dot.dy;
-            dot.alpha -= 0.02;
+            dot.alpha -= 0.001;
         })
     }
 
