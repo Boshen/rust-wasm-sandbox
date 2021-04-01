@@ -8,7 +8,7 @@ pub struct Attribute {
     pub num_of_components: i32,
 }
 
-pub fn init_gl() -> Result<WebGlRenderingContext, JsValue> {
+pub fn init_gl() -> Result<(HtmlCanvasElement, WebGlRenderingContext), JsValue> {
     let document = web_sys::window().unwrap().document().unwrap();
     let canvas = document.get_element_by_id("canvas").unwrap();
     let canvas: HtmlCanvasElement = canvas.dyn_into::<HtmlCanvasElement>()?;
@@ -19,7 +19,7 @@ pub fn init_gl() -> Result<WebGlRenderingContext, JsValue> {
     canvas.set_width(canvas.client_width() as u32);
     canvas.set_height(canvas.client_height() as u32);
     gl.viewport(0, 0, canvas.width() as i32, canvas.height() as i32);
-    Ok(gl)
+    Ok((canvas, gl))
 }
 
 pub fn compile_shader(gl: &WebGlRenderingContext, shader_type: u32, source: &str) -> Result<WebGlShader, String> {

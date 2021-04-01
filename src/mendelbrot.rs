@@ -12,25 +12,29 @@ struct App {
     program: WebGlProgram,
     attributes: Vec<Attribute>,
 
+    dimension: (f32, f32),
     zoom_center: (f32, f32),
+    target_zoom_center: (f32, f32),
     zoom_size: f32,
+    zoom_factor: f32,
     max_iterations: i32,
     zooming: bool,
 }
 
 impl App {
     pub fn new() -> Result<App, JsValue> {
-        let gl = init_gl()?;
+        let (canvas, gl) = init_gl()?;
         let vertex_source = r#"
         precision highp float;
         attribute vec2 a_position;
         void main() {
-          gl_Position = vec4(a_position.x, a_position.y, 0.0, 1.0);
+          gl_Position = vec4(a_position, 0.0, 1.0);
         }
     "#;
         let frag_source = r#"
         precision highp float;
 
+        uniform vec2 u_dimension;
         uniform vec2 u_zoom_center;
         uniform float u_zoom_size;
         uniform int u_max_iterations;
@@ -39,10 +43,10 @@ impl App {
             return mat2(x, -x.y, x.x) * x + c;
         }
         vec3 palette(float t, vec3 a, vec3 b, vec3 c, vec3 d) {
-            return a + b * cos(6.28318 * (c * t + d));
+            return a + b * cos(6.2 * (c * t + d));
         }
         void main() {
-          vec2 uv = gl_FragCoord.xy / vec2(800.0, 800.0);
+          vec2 uv = gl_FragCoord.xy / u_dimension;
           vec2 c = u_zoom_center + (uv * 4.0 - vec2(2.0)) * (u_zoom_size / 4.0);
           vec2 x = vec2(0.0);
           bool escaped = false;
@@ -56,7 +60,9 @@ impl App {
               break;
             }
           }
-          gl_FragColor = escaped ? vec4(palette(float(iterations)/float(u_max_iterations), vec3(0.0),vec3(0.59,0.55,0.75),vec3(0.1, 0.2, 0.3),vec3(0.75)),1.0) : vec4(vec3(0.85, 0.99, 1.0), 1.0);
+          gl_FragColor = escaped
+            ? vec4(palette(float(iterations) / float(u_max_iterations), vec3(0.0),vec3(0.59, 0.55, 0.75), vec3(0.1, 0.2, 0.3), vec3(0.75)), 1.0)
+            : vec4(vec3(0.85, 0.99, 1.0), 1.0);
         }
     "#;
         let program = create_program(&gl, &vertex_source, &frag_source)?;
@@ -74,25 +80,38 @@ impl App {
             gl,
             program,
             attributes: vec![attribute],
+            dimension: (canvas.width() as f32, canvas.height() as f32),
             zoom_center: (0.0, 0.0),
+            target_zoom_center: (0.0, 0.0),
             zoom_size: 4.0,
+            zoom_factor: 1.0,
             max_iterations: 500,
             zooming: false,
         })
     }
 
-    pub fn set_zooming(&mut self, zooming: bool) {
-        self.zooming = zooming;
+    pub fn toggle_zooming(&mut self, (x, y): (f32, f32)) {
+        self.zooming = !self.zooming;
+        if self.zooming {
+            self.set_target_zoom_center((x, y));
+            self.zoom_factor = 0.96;
+            self.max_iterations = 50;
+        } else {
+            self.max_iterations = 1000;
+            self.zoom_factor = 1.0;
+        }
     }
 
-    pub fn set_zoom_center(&mut self, (x, y): (f32, f32)) {
-        self.zoom_center.0 = self.zoom_center.0 - self.zoom_size / 2.0 + x * self.zoom_size;
-        self.zoom_center.1 = self.zoom_center.1 + self.zoom_size / 2.0 - y * self.zoom_size;
+    pub fn set_target_zoom_center(&mut self, (x, y): (f32, f32)) {
+        self.target_zoom_center.0 = self.zoom_center.0 - self.zoom_size / 2.0 + x * self.zoom_size;
+        self.target_zoom_center.1 = self.zoom_center.1 + self.zoom_size / 2.0 - y * self.zoom_size;
     }
 
     pub fn step(&mut self) {
         if self.zooming {
-            self.zoom_size *= 0.99;
+            self.zoom_size *= self.zoom_factor;
+            self.zoom_center.0 += 0.1 * (self.target_zoom_center.0 - self.zoom_center.0);
+            self.zoom_center.1 += 0.1 * (self.target_zoom_center.1 - self.zoom_center.1);
         }
     }
 
@@ -100,6 +119,11 @@ impl App {
         clear_gl(&self.gl);
         self.gl.use_program(Some(&self.program));
         set_attributes(&self.gl, &self.program, &self.attributes);
+        self.gl.uniform2f(
+            Some(&self.gl.get_uniform_location(&self.program, "u_dimension").unwrap()),
+            self.dimension.0,
+            self.dimension.1,
+        );
         self.gl.uniform2f(
             Some(&self.gl.get_uniform_location(&self.program, "u_zoom_center").unwrap()),
             self.zoom_center.0,
@@ -126,23 +150,15 @@ pub fn mendelbrot() -> Result<(), JsValue> {
     let app = Rc::new(RefCell::new(app));
 
     let canvas = dom::canvas("canvas");
-    let client_width = canvas.client_width() as f32;
-    let client_height = canvas.client_height() as f32;
+    let width = canvas.width() as f32;
+    let height = canvas.height() as f32;
 
     {
         let app = app.clone();
-        dom::add_mouse_event_listener(&canvas, "mousedown", move |e| {
-            let x = e.offset_x() as f32 / client_width;
-            let y = e.offset_y() as f32 / client_height;
-            app.borrow_mut().set_zoom_center((x, y));
-            app.borrow_mut().set_zooming(true);
-        });
-    }
-
-    {
-        let app = app.clone();
-        dom::add_mouse_event_listener(&canvas, "mouseup", move |_e| {
-            app.borrow_mut().set_zooming(false);
+        dom::add_mouse_event_listener(&canvas, "click", move |e| {
+            let x = e.offset_x() as f32 / width;
+            let y = e.offset_y() as f32 / height;
+            app.borrow_mut().toggle_zooming((x, y));
         });
     }
 

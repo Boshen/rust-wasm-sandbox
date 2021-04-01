@@ -44,7 +44,7 @@ struct App {
 
 impl App {
     pub fn new() -> Result<App, JsValue> {
-        let gl = init_gl()?;
+        let (_canvas, gl) = init_gl()?;
         let vertex_source = r#"
         attribute vec2 a_position;
         uniform vec2 u_translation;
