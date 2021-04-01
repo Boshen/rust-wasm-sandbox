@@ -12,7 +12,6 @@ struct App {
     program: WebGlProgram,
     attributes: Vec<Attribute>,
 
-    dimension: (f32, f32),
     zoom_center: (f32, f32),
     target_zoom_center: (f32, f32),
     zoom_size: f32,
@@ -23,7 +22,7 @@ struct App {
 
 impl App {
     pub fn new() -> Result<App, JsValue> {
-        let (canvas, gl) = init_gl()?;
+        let gl = init_gl("canvas")?;
         let vertex_source = r#"
         precision highp float;
         attribute vec2 a_position;
@@ -80,7 +79,6 @@ impl App {
             gl,
             program,
             attributes: vec![attribute],
-            dimension: (canvas.width() as f32, canvas.height() as f32),
             zoom_center: (0.0, 0.0),
             target_zoom_center: (0.0, 0.0),
             zoom_size: 4.0,
@@ -116,13 +114,14 @@ impl App {
     }
 
     pub fn render(&self) {
+        let canvas = dom::canvas("canvas");
         clear_gl(&self.gl);
         self.gl.use_program(Some(&self.program));
         set_attributes(&self.gl, &self.program, &self.attributes);
         self.gl.uniform2f(
             Some(&self.gl.get_uniform_location(&self.program, "u_dimension").unwrap()),
-            self.dimension.0,
-            self.dimension.1,
+            canvas.width() as f32,
+            canvas.height() as f32,
         );
         self.gl.uniform2f(
             Some(&self.gl.get_uniform_location(&self.program, "u_zoom_center").unwrap()),

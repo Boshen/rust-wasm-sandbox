@@ -1,6 +1,8 @@
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
-use web_sys::{HtmlCanvasElement, WebGlBuffer, WebGlProgram, WebGlRenderingContext, WebGlShader};
+use web_sys::{WebGlBuffer, WebGlProgram, WebGlRenderingContext, WebGlShader};
+
+use crate::dom;
 
 pub struct Attribute {
     pub name: &'static str,
@@ -8,18 +10,32 @@ pub struct Attribute {
     pub num_of_components: i32,
 }
 
-pub fn init_gl() -> Result<(HtmlCanvasElement, WebGlRenderingContext), JsValue> {
-    let document = web_sys::window().unwrap().document().unwrap();
-    let canvas = document.get_element_by_id("canvas").unwrap();
-    let canvas: HtmlCanvasElement = canvas.dyn_into::<HtmlCanvasElement>()?;
+pub fn init_gl(id: &'static str) -> Result<WebGlRenderingContext, JsValue> {
+    let canvas = dom::canvas(id);
     let gl = canvas
         .get_context("webgl")?
         .unwrap()
         .dyn_into::<WebGlRenderingContext>()?;
     canvas.set_width(canvas.client_width() as u32);
     canvas.set_height(canvas.client_height() as u32);
-    gl.viewport(0, 0, canvas.width() as i32, canvas.height() as i32);
-    Ok((canvas, gl))
+    resize_canvas_to_window_size(id);
+    Ok(gl)
+}
+
+pub fn resize_canvas_to_window_size(id: &'static str) {
+    let closure = Closure::wrap(Box::new(move || {
+        let c = dom::canvas(id);
+        let client_width = c.client_width() as u32;
+        let client_height = c.client_height() as u32;
+        if c.width() != client_width || c.height() != client_height {
+            c.set_width(client_width);
+            c.set_height(client_height);
+        }
+    }) as Box<dyn FnMut()>);
+    dom::window()
+        .add_event_listener_with_callback("resize", closure.as_ref().unchecked_ref())
+        .unwrap();
+    closure.forget();
 }
 
 pub fn compile_shader(gl: &WebGlRenderingContext, shader_type: u32, source: &str) -> Result<WebGlShader, String> {
@@ -95,6 +111,7 @@ pub fn buffer_data(gl: &WebGlRenderingContext, vertices: &Vec<f32>) {
 }
 
 pub fn clear_gl(gl: &WebGlRenderingContext) {
+    gl.viewport(0, 0, gl.drawing_buffer_width(), gl.drawing_buffer_height());
     gl.clear_color(1.0, 1.0, 1.0, 1.0);
     gl.clear_depth(1.0);
     gl.clear(WebGlRenderingContext::COLOR_BUFFER_BIT | WebGlRenderingContext::DEPTH_BUFFER_BIT);

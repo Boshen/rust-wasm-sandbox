@@ -44,7 +44,7 @@ struct App {
 
 impl App {
     pub fn new() -> Result<App, JsValue> {
-        let (_canvas, gl) = init_gl()?;
+        let gl = init_gl("canvas")?;
         let vertex_source = r#"
         attribute vec2 a_position;
         uniform vec2 u_translation;
@@ -81,10 +81,10 @@ impl App {
         };
 
         Ok(App {
-            dots: vec![],
             gl,
             program,
             attributes: vec![attribute],
+            dots: vec![],
             mouse_down: false,
             mouse_xy: (0.0, 0.0),
             n: 0,
@@ -213,14 +213,14 @@ impl App {
 pub fn tracer() -> Result<(), JsValue> {
     let app = App::new()?;
     let app = Rc::new(RefCell::new(app));
-
     let canvas = dom::canvas("canvas");
-    let client_width = canvas.client_width() as f32;
-    let client_height = canvas.client_height() as f32;
 
     {
         let app = app.clone();
         dom::add_mouse_event_listener(&canvas, "mousemove", move |e| {
+            let canvas = dom::canvas("canvas");
+            let client_width = canvas.client_width() as f32;
+            let client_height = canvas.client_height() as f32;
             let x = e.offset_x() as f32 / client_width * 2.0 - 1.0;
             let y = e.offset_y() as f32 / client_height * -2.0 + 1.0;
             app.borrow_mut().set_mouse_xy((x, y));
