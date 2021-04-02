@@ -67,7 +67,7 @@ impl App {
         let program = create_program(&gl, &vertex_source, &frag_source)?;
         let buffer = create_buffer(&gl)?;
         gl.bind_buffer(WebGlRenderingContext::ARRAY_BUFFER, Some(&buffer));
-        buffer_data(&gl, &vec![-1.0, -1.0, 3.0, -1.0, -1.0, 3.0]);
+        buffer_data_f32(&gl, &vec![-1.0, -1.0, 3.0, -1.0, -1.0, 3.0]);
 
         let attribute = Attribute {
             name: "a_position".into(),

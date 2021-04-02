@@ -18,6 +18,13 @@ pub fn init_gl(id: &'static str) -> Result<WebGlRenderingContext, JsValue> {
         .dyn_into::<WebGlRenderingContext>()?;
     canvas.set_width(canvas.client_width() as u32);
     canvas.set_height(canvas.client_height() as u32);
+
+    gl.enable(WebGlRenderingContext::CULL_FACE);
+    gl.enable(WebGlRenderingContext::DEPTH_TEST | WebGlRenderingContext::DEPTH_BUFFER_BIT);
+    gl.front_face(WebGlRenderingContext::CCW);
+    gl.cull_face(WebGlRenderingContext::BACK);
+    gl.depth_func(WebGlRenderingContext::LEQUAL);
+
     resize_canvas_to_window_size(id);
     Ok(gl)
 }
@@ -38,24 +45,16 @@ pub fn resize_canvas_to_window_size(id: &'static str) {
     closure.forget();
 }
 
-pub fn compile_shader(gl: &WebGlRenderingContext, shader_type: u32, source: &str) -> Result<WebGlShader, String> {
-    let shader = gl
-        .create_shader(shader_type)
-        .ok_or_else(|| String::from("Unable to create shader object"))?;
-    gl.shader_source(&shader, source);
-    gl.compile_shader(&shader);
-
-    if gl
-        .get_shader_parameter(&shader, WebGlRenderingContext::COMPILE_STATUS)
-        .as_bool()
-        .unwrap_or(false)
-    {
-        Ok(shader)
-    } else {
-        Err(gl
-            .get_shader_info_log(&shader)
-            .unwrap_or_else(|| String::from("Unknown error creating shader")))
-    }
+pub fn create_program(
+    gl: &WebGlRenderingContext,
+    vertex_source: &str,
+    fragment_source: &str,
+) -> Result<WebGlProgram, String> {
+    link_program(
+        gl,
+        &compile_shader(gl, WebGlRenderingContext::VERTEX_SHADER, vertex_source)?,
+        &compile_shader(gl, WebGlRenderingContext::FRAGMENT_SHADER, fragment_source)?,
+    )
 }
 
 pub fn link_program(
@@ -84,23 +83,39 @@ pub fn link_program(
     }
 }
 
-pub fn create_program(
-    gl: &WebGlRenderingContext,
-    vertex_source: &str,
-    fragment_source: &str,
-) -> Result<WebGlProgram, String> {
-    link_program(
-        gl,
-        &compile_shader(gl, WebGlRenderingContext::VERTEX_SHADER, vertex_source)?,
-        &compile_shader(gl, WebGlRenderingContext::FRAGMENT_SHADER, fragment_source)?,
-    )
+pub fn compile_shader(gl: &WebGlRenderingContext, shader_type: u32, source: &str) -> Result<WebGlShader, String> {
+    let shader = gl
+        .create_shader(shader_type)
+        .ok_or_else(|| String::from("Unable to create shader object"))?;
+    gl.shader_source(&shader, source);
+    gl.compile_shader(&shader);
+
+    if gl
+        .get_shader_parameter(&shader, WebGlRenderingContext::COMPILE_STATUS)
+        .as_bool()
+        .unwrap_or(false)
+    {
+        Ok(shader)
+    } else {
+        Err(gl
+            .get_shader_info_log(&shader)
+            .unwrap_or_else(|| String::from("Unknown error creating shader")))
+    }
 }
 
 pub fn create_buffer(gl: &WebGlRenderingContext) -> Result<WebGlBuffer, String> {
     gl.create_buffer().ok_or("failed to create buffer".to_string())
 }
 
-pub fn buffer_data(gl: &WebGlRenderingContext, vertices: &Vec<f32>) {
+pub fn bind_array_buffer(gl: &WebGlRenderingContext, buffer: &WebGlBuffer) {
+    gl.bind_buffer(WebGlRenderingContext::ARRAY_BUFFER, Some(&buffer));
+}
+
+pub fn bind_element_array_buffer(gl: &WebGlRenderingContext, buffer: &WebGlBuffer) {
+    gl.bind_buffer(WebGlRenderingContext::ELEMENT_ARRAY_BUFFER, Some(&buffer));
+}
+
+pub fn buffer_data_f32(gl: &WebGlRenderingContext, vertices: &Vec<f32>) {
     unsafe {
         gl.buffer_data_with_array_buffer_view(
             WebGlRenderingContext::ARRAY_BUFFER,
@@ -115,9 +130,6 @@ pub fn clear_gl(gl: &WebGlRenderingContext) {
     gl.clear_color(1.0, 1.0, 1.0, 1.0);
     gl.clear_depth(1.0);
     gl.clear(WebGlRenderingContext::COLOR_BUFFER_BIT | WebGlRenderingContext::DEPTH_BUFFER_BIT);
-    gl.enable(WebGlRenderingContext::CULL_FACE);
-    gl.enable(WebGlRenderingContext::DEPTH_TEST | WebGlRenderingContext::DEPTH_BUFFER_BIT);
-    gl.depth_func(WebGlRenderingContext::LEQUAL);
 }
 
 pub fn set_attributes(gl: &WebGlRenderingContext, program: &WebGlProgram, attributes: &Vec<Attribute>) {
@@ -134,4 +146,51 @@ pub fn set_attributes(gl: &WebGlRenderingContext, program: &WebGlProgram, attrib
             0,
         );
     })
+}
+
+#[rustfmt::skip]
+pub fn cube_vertices() -> Vec<f32> {
+    vec![
+    // Front face
+    -1.0, -1.0,  1.0,
+    1.0, -1.0,  1.0,
+    1.0,  1.0,  1.0,
+    -1.0,  1.0,  1.0,
+    // Back face
+    -1.0, -1.0, -1.0,
+    -1.0,  1.0, -1.0,
+    1.0,  1.0, -1.0,
+    1.0, -1.0, -1.0,
+    // Top face
+    -1.0,  1.0, -1.0,
+    -1.0,  1.0,  1.0,
+    1.0,  1.0,  1.0,
+    1.0,  1.0, -1.0,
+    // Bottom face
+    -1.0, -1.0, -1.0,
+    1.0, -1.0, -1.0,
+    1.0, -1.0,  1.0,
+    -1.0, -1.0,  1.0,
+    // Right face
+    1.0, -1.0, -1.0,
+    1.0,  1.0, -1.0,
+    1.0,  1.0,  1.0,
+    1.0, -1.0,  1.0,
+    // Left face
+    -1.0, -1.0, -1.0,
+    -1.0, -1.0,  1.0,
+    -1.0,  1.0,  1.0,
+    -1.0,  1.0, -1.0]
+}
+
+#[rustfmt::skip]
+pub fn cube_indices() -> Vec<u16> {
+   vec![
+   0,  1,  2,      0,  2,  3,    // front
+   4,  5,  6,      4,  6,  7,    // back
+   8,  9,  10,     8,  10, 11,   // top
+   12, 13, 14,     12, 14, 15,   // bottom
+   16, 17, 18,     16, 18, 19,   // right
+   20, 21, 22,     20, 22, 23,   // left
+  ]
 }

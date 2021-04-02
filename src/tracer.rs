@@ -72,7 +72,7 @@ impl App {
 
         let buffer = create_buffer(&gl)?;
         gl.bind_buffer(WebGlRenderingContext::ARRAY_BUFFER, Some(&buffer));
-        buffer_data(&gl, &vec![0.0, 0.0]);
+        buffer_data_f32(&gl, &vec![0.0, 0.0]);
 
         let attribute = Attribute {
             name: "a_position".into(),
