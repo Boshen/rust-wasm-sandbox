@@ -1,4 +1,4 @@
-import { game_of_life, tracer, mendelbrot } from "wasm-sandbox";
+import { game_of_life, tracer, mendelbrot, threed } from "wasm-sandbox";
 
 const params = new URLSearchParams(window.location.search)
 const canvasDiv = document.getElementById("canvas")
@@ -22,6 +22,9 @@ if (params.has('tracer')) {
 } else if (params.has('mendelbrot')) {
   run()
   mendelbrot()
+} else if (params.has('3d')) {
+  run()
+  threed()
 } else {
   linksDiv.style.display = 'block'
 }

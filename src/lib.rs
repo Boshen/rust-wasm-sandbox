@@ -1,4 +1,5 @@
 mod dom;
+mod threed;
 mod webgl;
 
 mod game_of_life;
