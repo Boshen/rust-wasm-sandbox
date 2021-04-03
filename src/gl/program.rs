@@ -15,7 +15,7 @@ pub struct ProgramDescription<'a> {
 pub struct Program {
     pub gl: WebGlRenderingContext,
     pub program: WebGlProgram,
-    pub indices_buffer: Option<WebGlBuffer>,
+    pub indices_buffer: Option<(WebGlBuffer, i32)>,
     pub attributes: Vec<AttributeLocation>,
 }
 
@@ -34,6 +34,19 @@ impl Program {
         })
     }
 
+    pub fn draw(&self) {
+        if let Some((_buffer, n)) = self.indices_buffer.as_ref() {
+            self.gl.draw_elements_with_i32(
+                WebGlRenderingContext::TRIANGLES,
+                *n,
+                WebGlRenderingContext::UNSIGNED_SHORT,
+                0,
+            );
+        } else {
+            self.gl.draw_arrays(WebGlRenderingContext::TRIANGLES, 0, 3);
+        }
+    }
+
     pub fn set_attributes(&self) {
         self.attributes.iter().for_each(|attribute| {
             self.gl
@@ -48,7 +61,7 @@ impl Program {
             );
             self.gl.enable_vertex_attrib_array(attribute.location);
         });
-        if let Some(indices_buffer) = self.indices_buffer.as_ref() {
+        if let Some((indices_buffer, _)) = self.indices_buffer.as_ref() {
             self.gl
                 .bind_buffer(WebGlRenderingContext::ELEMENT_ARRAY_BUFFER, Some(indices_buffer));
         }
@@ -80,18 +93,18 @@ impl Program {
             .clear(WebGlRenderingContext::COLOR_BUFFER_BIT | WebGlRenderingContext::DEPTH_BUFFER_BIT);
     }
 
-    pub fn init_indices_buffer(gl: &WebGlRenderingContext, indices: &Option<Vec<u16>>) -> Option<WebGlBuffer> {
-        indices.as_ref().map(|element_array| {
+    pub fn init_indices_buffer(gl: &WebGlRenderingContext, indices: &Option<Vec<u16>>) -> Option<(WebGlBuffer, i32)> {
+        indices.as_ref().map(|indices| {
             let buffer = gl.create_buffer();
             gl.bind_buffer(WebGlRenderingContext::ELEMENT_ARRAY_BUFFER, buffer.as_ref());
             unsafe {
                 gl.buffer_data_with_array_buffer_view(
                     WebGlRenderingContext::ELEMENT_ARRAY_BUFFER,
-                    &js_sys::Uint16Array::view(element_array),
+                    &js_sys::Uint16Array::view(indices),
                     WebGlRenderingContext::STATIC_DRAW,
                 );
             }
-            buffer.unwrap()
+            (buffer.unwrap(), indices.len() as i32)
         })
     }
 

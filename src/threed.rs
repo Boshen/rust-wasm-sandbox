@@ -3,7 +3,6 @@ use std::rc::Rc;
 use std::{cell::RefCell, f32::consts::PI};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
-use web_sys::WebGlRenderingContext;
 
 use crate::geometry::Cube;
 use crate::gl::{Attribute, AttributeType, Dimension, Program, ProgramDescription, UniformValue};
@@ -118,12 +117,7 @@ impl App {
         self.program
             .set_uniform("u_model_view_matrix", UniformValue::Matrix4(model_view_matrix));
 
-        self.program.gl.draw_elements_with_i32(
-            WebGlRenderingContext::TRIANGLES,
-            36,
-            WebGlRenderingContext::UNSIGNED_SHORT,
-            0,
-        );
+        self.program.draw();
     }
 }
 

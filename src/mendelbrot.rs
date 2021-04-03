@@ -2,7 +2,6 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
-use web_sys::WebGlRenderingContext;
 
 use crate::dom;
 use crate::gl::{Attribute, AttributeType, Dimension, Program, ProgramDescription, UniformValue};
@@ -129,7 +128,7 @@ impl App {
             .set_uniform("u_zoom_size", UniformValue::Float(self.zoom_size));
         self.program
             .set_uniform("u_max_iterations", UniformValue::Int(self.max_iterations));
-        self.program.gl.draw_arrays(WebGlRenderingContext::TRIANGLES, 0, 3);
+        self.program.draw();
     }
 }
 
