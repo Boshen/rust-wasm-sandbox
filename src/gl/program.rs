@@ -1,6 +1,6 @@
 use wasm_bindgen::JsCast;
 use wasm_bindgen::JsValue;
-use web_sys::{WebGlProgram, WebGlRenderingContext, WebGlShader};
+use web_sys::{WebGlBuffer, WebGlProgram, WebGlRenderingContext, WebGlShader};
 
 use crate::dom;
 use crate::gl::{Attribute, AttributeLocation, UniformValue};
@@ -8,12 +8,14 @@ use crate::gl::{Attribute, AttributeLocation, UniformValue};
 pub struct ProgramDescription<'a> {
     pub vertex_source: &'a str,
     pub fragment_source: &'a str,
+    pub indices: Option<Vec<u16>>,
     pub attributes: Vec<Attribute>,
 }
 
 pub struct Program {
     pub gl: WebGlRenderingContext,
     pub program: WebGlProgram,
+    pub indices_buffer: Option<WebGlBuffer>,
     pub attributes: Vec<AttributeLocation>,
 }
 
@@ -22,10 +24,12 @@ impl Program {
         let gl = Program::init_gl(canvas_id)?;
         let program = Program::create_program(&gl, desc.vertex_source, desc.fragment_source)?;
         let attributes = Program::init_attributes(&gl, &program, &desc.attributes);
+        let indices_buffer = Program::init_indices_buffer(&gl, &desc.indices);
 
         Ok(Program {
             gl,
             program,
+            indices_buffer,
             attributes,
         })
     }
@@ -43,11 +47,11 @@ impl Program {
                 0,
             );
             self.gl.enable_vertex_attrib_array(attribute.location);
-            if let Some(element_array_buffer) = attribute.element_array_buffer.as_ref() {
-                self.gl
-                    .bind_buffer(WebGlRenderingContext::ELEMENT_ARRAY_BUFFER, Some(element_array_buffer));
-            }
-        })
+        });
+        if let Some(indices_buffer) = self.indices_buffer.as_ref() {
+            self.gl
+                .bind_buffer(WebGlRenderingContext::ELEMENT_ARRAY_BUFFER, Some(indices_buffer));
+        }
     }
 
     pub fn set_uniform(&self, name: &str, value: UniformValue) {
@@ -76,6 +80,21 @@ impl Program {
             .clear(WebGlRenderingContext::COLOR_BUFFER_BIT | WebGlRenderingContext::DEPTH_BUFFER_BIT);
     }
 
+    pub fn init_indices_buffer(gl: &WebGlRenderingContext, indices: &Option<Vec<u16>>) -> Option<WebGlBuffer> {
+        indices.as_ref().map(|element_array| {
+            let buffer = gl.create_buffer();
+            gl.bind_buffer(WebGlRenderingContext::ELEMENT_ARRAY_BUFFER, buffer.as_ref());
+            unsafe {
+                gl.buffer_data_with_array_buffer_view(
+                    WebGlRenderingContext::ELEMENT_ARRAY_BUFFER,
+                    &js_sys::Uint16Array::view(element_array),
+                    WebGlRenderingContext::STATIC_DRAW,
+                );
+            }
+            buffer.unwrap()
+        })
+    }
+
     pub fn init_attributes(
         gl: &WebGlRenderingContext,
         program: &WebGlProgram,
@@ -94,27 +113,10 @@ impl Program {
                     );
                 }
 
-                let element_array_buffer = attribute.element_array.as_ref().map(|element_array| {
-                    let element_array_buffer = gl.create_buffer();
-                    gl.bind_buffer(
-                        WebGlRenderingContext::ELEMENT_ARRAY_BUFFER,
-                        element_array_buffer.as_ref(),
-                    );
-                    unsafe {
-                        gl.buffer_data_with_array_buffer_view(
-                            WebGlRenderingContext::ELEMENT_ARRAY_BUFFER,
-                            &js_sys::Uint16Array::view(element_array),
-                            WebGlRenderingContext::STATIC_DRAW,
-                        );
-                    }
-                    element_array_buffer.unwrap()
-                });
-
                 AttributeLocation {
                     location: gl.get_attrib_location(program, attribute.name) as u32,
                     attribute_type: attribute.attribute_type,
                     buffer: buffer.unwrap(),
-                    element_array_buffer,
                 }
             })
             .collect()

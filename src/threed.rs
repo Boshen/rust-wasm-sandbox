@@ -43,18 +43,17 @@ impl App {
             ProgramDescription {
                 vertex_source,
                 fragment_source,
+                indices: Some(cube.indices),
                 attributes: vec![
                     Attribute {
                         name: "a_position",
                         attribute_type: AttributeType::Vector(Dimension::D3),
                         vertices: cube.vertices,
-                        element_array: Some(cube.indices),
                     },
                     Attribute {
                         name: "a_color",
                         attribute_type: AttributeType::Vector(Dimension::D4),
                         vertices: App::cube_colors(),
-                        element_array: None,
                     },
                 ],
             },

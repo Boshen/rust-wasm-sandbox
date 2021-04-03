@@ -67,11 +67,11 @@ impl App {
             ProgramDescription {
                 vertex_source,
                 fragment_source,
+                indices: None,
                 attributes: vec![Attribute {
                     name: "a_position",
                     attribute_type: AttributeType::Vector(Dimension::D2),
                     vertices: vec![-1.0, -1.0, 3.0, -1.0, -1.0, 3.0],
-                    element_array: None,
                 }],
             },
         )?;

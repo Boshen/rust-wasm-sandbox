@@ -6,14 +6,12 @@ pub struct Attribute {
     pub name: &'static str,
     pub attribute_type: AttributeType,
     pub vertices: Vec<f32>,
-    pub element_array: Option<Vec<u16>>,
 }
 
 pub struct AttributeLocation {
     pub location: u32,
     pub attribute_type: AttributeType,
     pub buffer: WebGlBuffer,
-    pub element_array_buffer: Option<WebGlBuffer>,
 }
 
 impl AttributeLocation {
