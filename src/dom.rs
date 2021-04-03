@@ -34,14 +34,14 @@ fn run_request_animation_frame(f: &Closure<dyn FnMut(f32)>) {
 
 pub fn request_animation_frame<F>(callback: F)
 where
-    F: Fn(f32) + 'static,
+    F: Fn(f32, f32) + 'static,
 {
     let mut past_time = 0.0;
     let f: Rc<RefCell<Option<Closure<dyn FnMut(f32)>>>> = Rc::new(RefCell::new(None));
     let g = f.clone();
     *g.borrow_mut() = Some(Closure::wrap(Box::new(move |t: f32| {
         let now = t * 0.001;
-        callback(now - past_time);
+        callback(now, now - past_time);
         past_time = now;
         run_request_animation_frame(f.borrow().as_ref().unwrap());
     }) as Box<dyn FnMut(f32)>));

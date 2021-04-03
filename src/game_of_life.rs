@@ -187,7 +187,7 @@ pub fn game_of_life() -> Result<(), JsValue> {
         });
     }
 
-    dom::request_animation_frame(move |_dt| {
+    dom::request_animation_frame(move |_t, _dt| {
         canvas.borrow().render();
     });
 

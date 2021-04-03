@@ -119,21 +119,21 @@ impl App {
         self.gl.use_program(Some(&self.program));
         set_attributes(&self.gl, &self.program, &self.attributes);
         self.gl.uniform2f(
-            Some(&self.gl.get_uniform_location(&self.program, "u_dimension").unwrap()),
+            self.gl.get_uniform_location(&self.program, "u_dimension").as_ref(),
             canvas.width() as f32,
             canvas.height() as f32,
         );
         self.gl.uniform2f(
-            Some(&self.gl.get_uniform_location(&self.program, "u_zoom_center").unwrap()),
+            self.gl.get_uniform_location(&self.program, "u_zoom_center").as_ref(),
             self.zoom_center.0,
             self.zoom_center.1,
         );
         self.gl.uniform1f(
-            Some(&self.gl.get_uniform_location(&self.program, "u_zoom_size").unwrap()),
+            self.gl.get_uniform_location(&self.program, "u_zoom_size").as_ref(),
             self.zoom_size,
         );
         self.gl.uniform1i(
-            Some(&self.gl.get_uniform_location(&self.program, "u_max_iterations").unwrap()),
+            self.gl.get_uniform_location(&self.program, "u_max_iterations").as_ref(),
             self.max_iterations,
         );
         self.gl.draw_arrays(WebGlRenderingContext::TRIANGLES, 0, 3);
@@ -161,7 +161,7 @@ pub fn mendelbrot() -> Result<(), JsValue> {
         });
     }
 
-    dom::request_animation_frame(move |_dt| {
+    dom::request_animation_frame(move |_t, _dt| {
         app.borrow_mut().step();
         app.borrow().render();
     });

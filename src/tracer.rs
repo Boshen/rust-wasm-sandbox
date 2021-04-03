@@ -93,29 +93,27 @@ impl App {
 
     fn set_translation(&self, dot: &Dot) {
         self.gl.uniform2f(
-            Some(&self.gl.get_uniform_location(&self.program, "u_translation").unwrap()),
+            self.gl.get_uniform_location(&self.program, "u_translation").as_ref(),
             dot.x,
             dot.y,
         );
     }
 
     fn set_scale(&self, dot: &Dot) {
-        self.gl.uniform1f(
-            Some(&self.gl.get_uniform_location(&self.program, "u_scale").unwrap()),
-            dot.r,
-        );
+        self.gl
+            .uniform1f(self.gl.get_uniform_location(&self.program, "u_scale").as_ref(), dot.r);
     }
 
     fn set_alpha(&self, dot: &Dot) {
         self.gl.uniform1f(
-            Some(&self.gl.get_uniform_location(&self.program, "u_alpha").unwrap()),
+            self.gl.get_uniform_location(&self.program, "u_alpha").as_ref(),
             dot.alpha,
         );
     }
 
     fn set_color(&self, dot: &Dot) {
         self.gl.uniform3fv_with_f32_array(
-            Some(&self.gl.get_uniform_location(&self.program, "u_color").unwrap()),
+            self.gl.get_uniform_location(&self.program, "u_color").as_ref(),
             &dot.color,
         );
     }
@@ -241,7 +239,7 @@ pub fn tracer() -> Result<(), JsValue> {
         });
     }
 
-    dom::request_animation_frame(move |_dt| {
+    dom::request_animation_frame(move |_t, _dt| {
         app.borrow_mut().step();
         app.borrow().render();
     });

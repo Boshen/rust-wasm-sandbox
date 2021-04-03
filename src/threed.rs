@@ -82,7 +82,29 @@ impl App {
         face_colors.iter().flat_map(|c| c.repeat(4)).collect()
     }
 
-    pub fn render(&self) {
+    fn set_ratation(&self, t: f32) {
+        let mut world_matrix: Mat4 = [0.0; 16];
+        mat4::identity(&mut world_matrix);
+
+        let mut identity_matrix: Mat4 = [0.; 16];
+        mat4::identity(&mut identity_matrix);
+
+        let mut x_rotation_matrix: Mat4 = [0.; 16];
+        let mut y_rotation_matrix: Mat4 = [0.; 16];
+        let angle: f32 = t / 2.0 * PI;
+
+        mat4::rotate(&mut y_rotation_matrix, &identity_matrix, angle, &[0., 1., 0.]);
+        mat4::rotate(&mut x_rotation_matrix, &identity_matrix, angle / 4.0, &[1., 0., 0.]);
+        mat4::mul(&mut world_matrix, &y_rotation_matrix, &x_rotation_matrix);
+
+        self.gl.uniform_matrix4fv_with_f32_array(
+            self.gl.get_uniform_location(&self.program, "u_world_matrix").as_ref(),
+            false,
+            &world_matrix,
+        );
+    }
+
+    pub fn render(&self, t: f32) {
         webgl::clear_gl(&self.gl);
         self.gl.use_program(Some(&self.program));
 
@@ -104,56 +126,28 @@ impl App {
         let aspect = self.gl.drawing_buffer_width() as f32 / self.gl.drawing_buffer_height() as f32;
         let z_near = 0.1;
         let z_far = 100.0;
-        let mut world_matrix: Mat4 = [0.0; 16];
         let mut project_matrix: Mat4 = [0.0; 16];
         let mut model_view_matrix: Mat4 = [0.0; 16];
 
-        mat4::identity(&mut world_matrix);
         mat4::look_at(&mut model_view_matrix, &[0., 0., -8.], &[0., 0., 0.], &[0., 1., 0.]);
         mat4::perspective(&mut project_matrix, fov, aspect, z_near, Some(z_far));
 
-        self.gl.uniform_matrix4fv_with_f32_array(
-            Some(&self.gl.get_uniform_location(&self.program, "u_world_matrix").unwrap()),
-            false,
-            &world_matrix,
-        );
+        self.set_ratation(t);
 
         self.gl.uniform_matrix4fv_with_f32_array(
-            Some(
-                &self
-                    .gl
-                    .get_uniform_location(&self.program, "u_projection_matrix")
-                    .unwrap(),
-            ),
+            self.gl
+                .get_uniform_location(&self.program, "u_projection_matrix")
+                .as_ref(),
             false,
             &project_matrix,
         );
 
         self.gl.uniform_matrix4fv_with_f32_array(
-            Some(
-                &self
-                    .gl
-                    .get_uniform_location(&self.program, "u_model_view_matrix")
-                    .unwrap(),
-            ),
+            self.gl
+                .get_uniform_location(&self.program, "u_model_view_matrix")
+                .as_ref(),
             false,
             &model_view_matrix,
-        );
-
-        let mut x_rotation_matrix: Mat4 = [0.; 16];
-        let mut y_rotation_matrix: Mat4 = [0.; 16];
-
-        let mut identity_matrix: Mat4 = [0.; 16];
-        mat4::identity(&mut identity_matrix);
-        let angle: f32 = dom::window().performance().unwrap().now() as f32 / 1000.0 / 6.0 * 2.0 * PI;
-
-        mat4::rotate(&mut y_rotation_matrix, &identity_matrix, angle, &[0., 1., 0.]);
-        mat4::rotate(&mut x_rotation_matrix, &identity_matrix, angle / 4_f32, &[1., 0., 0.]);
-        mat4::mul(&mut world_matrix, &y_rotation_matrix, &x_rotation_matrix);
-        self.gl.uniform_matrix4fv_with_f32_array(
-            Some(&self.gl.get_uniform_location(&self.program, "u_world_matrix").unwrap()),
-            false,
-            &world_matrix,
         );
 
         self.gl.draw_elements_with_i32(
@@ -170,8 +164,8 @@ impl App {
 pub fn threed() -> Result<(), JsValue> {
     let app = App::new()?;
     let app = Rc::new(RefCell::new(app));
-    dom::request_animation_frame(move |_dt| {
-        app.borrow().render();
+    dom::request_animation_frame(move |t, _dt| {
+        app.borrow().render(t);
     });
     Ok(())
 }
