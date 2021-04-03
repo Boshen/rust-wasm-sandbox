@@ -1,5 +1,5 @@
-mod cube;
 mod dom;
+mod geometry;
 mod gl;
 
 mod game_of_life;

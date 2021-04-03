@@ -5,13 +5,13 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
 use web_sys::WebGlRenderingContext;
 
+use crate::geometry::Cube;
 use crate::gl::{Attribute, AttributeType, Dimension, Program, ProgramDescription, UniformValue};
 
 struct App {
     program: Program,
 }
 
-use crate::cube;
 use crate::dom;
 
 impl App {
@@ -37,6 +37,7 @@ impl App {
         }
     "#;
 
+        let cube = Cube::new(1, 1, 1);
         let program = Program::new(
             "canvas",
             ProgramDescription {
@@ -46,8 +47,8 @@ impl App {
                     Attribute {
                         name: "a_position",
                         attribute_type: AttributeType::Vector(Dimension::D3),
-                        vertices: cube::cube_vertices(),
-                        element_array: Some(cube::cube_indices()),
+                        vertices: cube.vertices,
+                        element_array: Some(cube.indices),
                     },
                     Attribute {
                         name: "a_color",
