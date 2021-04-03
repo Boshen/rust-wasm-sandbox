@@ -1,9 +1,10 @@
+mod cube;
 mod dom;
-mod threed;
-mod webgl;
+mod gl;
 
 mod game_of_life;
 mod mendelbrot;
+mod threed;
 mod tracer;
 
 #[cfg(feature = "wee_alloc")]

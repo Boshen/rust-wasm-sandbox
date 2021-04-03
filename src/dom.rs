@@ -71,3 +71,19 @@ where
         .unwrap();
     closure.forget();
 }
+
+pub fn resize_canvas_to_window_size(canvas_id: &'static str) {
+    let closure = Closure::wrap(Box::new(move || {
+        let c = canvas(canvas_id);
+        let client_width = c.client_width() as u32;
+        let client_height = c.client_height() as u32;
+        if c.width() != client_width || c.height() != client_height {
+            c.set_width(client_width);
+            c.set_height(client_height);
+        }
+    }) as Box<dyn FnMut()>);
+    window()
+        .add_event_listener_with_callback("resize", closure.as_ref().unchecked_ref())
+        .unwrap();
+    closure.forget();
+}

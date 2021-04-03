@@ -3,23 +3,19 @@ use std::rc::Rc;
 use std::{cell::RefCell, f32::consts::PI};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
-use web_sys::{WebGlBuffer, WebGlProgram, WebGlRenderingContext};
+use web_sys::WebGlRenderingContext;
+
+use crate::gl::{Attribute, AttributeType, Dimension, Program, ProgramDescription};
 
 struct App {
-    gl: WebGlRenderingContext,
-    program: WebGlProgram,
-
-    position_buffer: WebGlBuffer,
-    index_buffer: WebGlBuffer,
-    color_buffer: WebGlBuffer,
+    program: Program,
 }
 
+use crate::cube;
 use crate::dom;
-use crate::webgl;
 
 impl App {
     pub fn new() -> Result<App, JsValue> {
-        let gl = webgl::init_gl("canvas")?;
         let vertex_source = r#"
         attribute vec4 a_position;
         attribute vec4 a_color;
@@ -33,40 +29,37 @@ impl App {
           v_color = a_color;
         }
     "#;
-        let frag_source = r#"
+        let fragment_source = r#"
         precision mediump float;
         varying vec4 v_color;
         void main() {
           gl_FragColor = v_color;
         }
     "#;
-        let program = webgl::create_program(&gl, &vertex_source, &frag_source)?;
 
-        let position_buffer = webgl::create_buffer(&gl)?;
-        webgl::bind_array_buffer(&gl, &position_buffer);
-        webgl::buffer_data_f32(&gl, &webgl::cube_vertices());
+        let program = Program::new(
+            "canvas",
+            ProgramDescription {
+                vertex_source,
+                fragment_source,
+                attributes: vec![
+                    Attribute {
+                        name: "a_position",
+                        attribute_type: AttributeType::Vector(Dimension::D3),
+                        vertices: cube::cube_vertices(),
+                        element_array: Some(cube::cube_indices()),
+                    },
+                    Attribute {
+                        name: "a_color",
+                        attribute_type: AttributeType::Vector(Dimension::D4),
+                        vertices: App::cube_colors(),
+                        element_array: None,
+                    },
+                ],
+            },
+        )?;
 
-        let index_buffer = webgl::create_buffer(&gl)?;
-        webgl::bind_element_array_buffer(&gl, &index_buffer);
-        unsafe {
-            gl.buffer_data_with_array_buffer_view(
-                WebGlRenderingContext::ELEMENT_ARRAY_BUFFER,
-                &js_sys::Uint16Array::view(&webgl::cube_indices()),
-                WebGlRenderingContext::STATIC_DRAW,
-            );
-        }
-
-        let color_buffer = webgl::create_buffer(&gl)?;
-        webgl::bind_array_buffer(&gl, &color_buffer);
-        webgl::buffer_data_f32(&gl, &App::cube_colors());
-
-        Ok(App {
-            gl,
-            program,
-            position_buffer,
-            index_buffer,
-            color_buffer,
-        })
+        Ok(App { program })
     }
 
     #[rustfmt::skip]
@@ -82,7 +75,7 @@ impl App {
         face_colors.iter().flat_map(|c| c.repeat(4)).collect()
     }
 
-    fn set_ratation(&self, t: f32) {
+    fn set_rotation(&self, t: f32) {
         let mut world_matrix: Mat4 = [0.0; 16];
         mat4::identity(&mut world_matrix);
 
@@ -97,33 +90,24 @@ impl App {
         mat4::rotate(&mut x_rotation_matrix, &identity_matrix, angle / 4.0, &[1., 0., 0.]);
         mat4::mul(&mut world_matrix, &y_rotation_matrix, &x_rotation_matrix);
 
-        self.gl.uniform_matrix4fv_with_f32_array(
-            self.gl.get_uniform_location(&self.program, "u_world_matrix").as_ref(),
+        self.program.gl.uniform_matrix4fv_with_f32_array(
+            self.program
+                .gl
+                .get_uniform_location(&self.program.program, "u_world_matrix")
+                .as_ref(),
             false,
             &world_matrix,
         );
     }
 
     pub fn render(&self, t: f32) {
-        webgl::clear_gl(&self.gl);
-        self.gl.use_program(Some(&self.program));
+        self.program.clear_gl();
+        self.program.gl.use_program(Some(&self.program.program));
 
-        let attribute_position = self.gl.get_attrib_location(&self.program, "a_position") as u32;
-        webgl::bind_array_buffer(&self.gl, &self.position_buffer);
-        self.gl
-            .vertex_attrib_pointer_with_i32(attribute_position, 3, WebGlRenderingContext::FLOAT, false, 0, 0);
-        self.gl.enable_vertex_attrib_array(attribute_position);
-
-        let attribute_color = self.gl.get_attrib_location(&self.program, "a_color") as u32;
-        webgl::bind_array_buffer(&self.gl, &self.color_buffer);
-        self.gl
-            .vertex_attrib_pointer_with_i32(attribute_color, 4, WebGlRenderingContext::FLOAT, false, 0, 0);
-        self.gl.enable_vertex_attrib_array(attribute_color);
-
-        webgl::bind_element_array_buffer(&self.gl, &self.index_buffer);
+        self.program.set_attributes();
 
         let fov = 45.0 * PI / 180.0;
-        let aspect = self.gl.drawing_buffer_width() as f32 / self.gl.drawing_buffer_height() as f32;
+        let aspect = self.program.gl.drawing_buffer_width() as f32 / self.program.gl.drawing_buffer_height() as f32;
         let z_near = 0.1;
         let z_far = 100.0;
         let mut project_matrix: Mat4 = [0.0; 16];
@@ -132,25 +116,27 @@ impl App {
         mat4::look_at(&mut model_view_matrix, &[0., 0., -8.], &[0., 0., 0.], &[0., 1., 0.]);
         mat4::perspective(&mut project_matrix, fov, aspect, z_near, Some(z_far));
 
-        self.set_ratation(t);
+        self.set_rotation(t);
 
-        self.gl.uniform_matrix4fv_with_f32_array(
-            self.gl
-                .get_uniform_location(&self.program, "u_projection_matrix")
+        self.program.gl.uniform_matrix4fv_with_f32_array(
+            self.program
+                .gl
+                .get_uniform_location(&self.program.program, "u_projection_matrix")
                 .as_ref(),
             false,
             &project_matrix,
         );
 
-        self.gl.uniform_matrix4fv_with_f32_array(
-            self.gl
-                .get_uniform_location(&self.program, "u_model_view_matrix")
+        self.program.gl.uniform_matrix4fv_with_f32_array(
+            self.program
+                .gl
+                .get_uniform_location(&self.program.program, "u_model_view_matrix")
                 .as_ref(),
             false,
             &model_view_matrix,
         );
 
-        self.gl.draw_elements_with_i32(
+        self.program.gl.draw_elements_with_i32(
             WebGlRenderingContext::TRIANGLES,
             36,
             WebGlRenderingContext::UNSIGNED_SHORT,

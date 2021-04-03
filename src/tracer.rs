@@ -2,10 +2,10 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
-use web_sys::{WebGlProgram, WebGlRenderingContext};
+use web_sys::WebGlRenderingContext;
 
 use crate::dom;
-use crate::webgl::*;
+use crate::gl::{Attribute, AttributeType, Dimension, Program, ProgramDescription};
 
 struct Dot {
     x: f32,
@@ -32,9 +32,7 @@ impl Default for Dot {
 }
 
 struct App {
-    gl: WebGlRenderingContext,
-    program: WebGlProgram,
-    attributes: Vec<Attribute>,
+    program: Program,
 
     dots: Vec<Dot>,
     mouse_down: bool,
@@ -44,7 +42,6 @@ struct App {
 
 impl App {
     pub fn new() -> Result<App, JsValue> {
-        let gl = init_gl("canvas")?;
         let vertex_source = r#"
         attribute vec2 a_position;
         uniform vec2 u_translation;
@@ -55,7 +52,7 @@ impl App {
           gl_PointSize = u_scale;
         }
     "#;
-        let frag_source = r#"
+        let fragment_source = r#"
         precision mediump float;
         uniform float u_alpha;
         uniform vec3 u_color;
@@ -68,22 +65,23 @@ impl App {
           gl_FragColor = vec4(u_color, u_alpha);
         }
     "#;
-        let program = create_program(&gl, &vertex_source, &frag_source)?;
 
-        let buffer = create_buffer(&gl)?;
-        gl.bind_buffer(WebGlRenderingContext::ARRAY_BUFFER, Some(&buffer));
-        buffer_data_f32(&gl, &vec![0.0, 0.0]);
-
-        let attribute = Attribute {
-            name: "a_position".into(),
-            num_of_components: 2,
-            buffer,
-        };
+        let program = Program::new(
+            "canvas",
+            ProgramDescription {
+                vertex_source,
+                fragment_source,
+                attributes: vec![Attribute {
+                    name: "a_position",
+                    attribute_type: AttributeType::Vector(Dimension::D2),
+                    vertices: vec![0.0, 0.0],
+                    element_array: None,
+                }],
+            },
+        )?;
 
         Ok(App {
-            gl,
             program,
-            attributes: vec![attribute],
             dots: vec![],
             mouse_down: false,
             mouse_xy: (0.0, 0.0),
@@ -92,28 +90,42 @@ impl App {
     }
 
     fn set_translation(&self, dot: &Dot) {
-        self.gl.uniform2f(
-            self.gl.get_uniform_location(&self.program, "u_translation").as_ref(),
+        self.program.gl.uniform2f(
+            self.program
+                .gl
+                .get_uniform_location(&self.program.program, "u_translation")
+                .as_ref(),
             dot.x,
             dot.y,
         );
     }
 
     fn set_scale(&self, dot: &Dot) {
-        self.gl
-            .uniform1f(self.gl.get_uniform_location(&self.program, "u_scale").as_ref(), dot.r);
+        self.program.gl.uniform1f(
+            self.program
+                .gl
+                .get_uniform_location(&self.program.program, "u_scale")
+                .as_ref(),
+            dot.r,
+        );
     }
 
     fn set_alpha(&self, dot: &Dot) {
-        self.gl.uniform1f(
-            self.gl.get_uniform_location(&self.program, "u_alpha").as_ref(),
+        self.program.gl.uniform1f(
+            self.program
+                .gl
+                .get_uniform_location(&self.program.program, "u_alpha")
+                .as_ref(),
             dot.alpha,
         );
     }
 
     fn set_color(&self, dot: &Dot) {
-        self.gl.uniform3fv_with_f32_array(
-            self.gl.get_uniform_location(&self.program, "u_color").as_ref(),
+        self.program.gl.uniform3fv_with_f32_array(
+            self.program
+                .gl
+                .get_uniform_location(&self.program.program, "u_color")
+                .as_ref(),
             &dot.color,
         );
     }
@@ -193,15 +205,15 @@ impl App {
     }
 
     pub fn render(&self) {
-        clear_gl(&self.gl);
-        self.gl.use_program(Some(&self.program));
-        set_attributes(&self.gl, &self.program, &self.attributes);
+        self.program.clear_gl();
+        self.program.gl.use_program(Some(&self.program.program));
+        self.program.set_attributes();
         self.dots.iter().for_each(|dot| {
             self.set_translation(dot);
             self.set_scale(dot);
             self.set_alpha(dot);
             self.set_color(dot);
-            self.gl.draw_arrays(WebGlRenderingContext::POINTS, 0, 1);
+            self.program.gl.draw_arrays(WebGlRenderingContext::POINTS, 0, 1);
         })
     }
 }

@@ -2,15 +2,13 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
-use web_sys::{WebGlProgram, WebGlRenderingContext};
+use web_sys::WebGlRenderingContext;
 
 use crate::dom;
-use crate::webgl::*;
+use crate::gl::{Attribute, AttributeType, Dimension, Program, ProgramDescription};
 
 struct App {
-    gl: WebGlRenderingContext,
-    program: WebGlProgram,
-    attributes: Vec<Attribute>,
+    program: Program,
 
     zoom_center: (f32, f32),
     target_zoom_center: (f32, f32),
@@ -22,7 +20,6 @@ struct App {
 
 impl App {
     pub fn new() -> Result<App, JsValue> {
-        let gl = init_gl("canvas")?;
         let vertex_source = r#"
         precision highp float;
         attribute vec2 a_position;
@@ -30,7 +27,7 @@ impl App {
           gl_Position = vec4(a_position, 0.0, 1.0);
         }
     "#;
-        let frag_source = r#"
+        let fragment_source = r#"
         precision highp float;
 
         uniform vec2 u_dimension;
@@ -64,21 +61,23 @@ impl App {
             : vec4(vec3(0.85, 0.99, 1.0), 1.0);
         }
     "#;
-        let program = create_program(&gl, &vertex_source, &frag_source)?;
-        let buffer = create_buffer(&gl)?;
-        gl.bind_buffer(WebGlRenderingContext::ARRAY_BUFFER, Some(&buffer));
-        buffer_data_f32(&gl, &vec![-1.0, -1.0, 3.0, -1.0, -1.0, 3.0]);
 
-        let attribute = Attribute {
-            name: "a_position".into(),
-            num_of_components: 2,
-            buffer,
-        };
+        let program = Program::new(
+            "canvas",
+            ProgramDescription {
+                vertex_source,
+                fragment_source,
+                attributes: vec![Attribute {
+                    name: "a_position",
+                    attribute_type: AttributeType::Vector(Dimension::D2),
+                    vertices: vec![-1.0, -1.0, 3.0, -1.0, -1.0, 3.0],
+                    element_array: None,
+                }],
+            },
+        )?;
 
         Ok(App {
-            gl,
             program,
-            attributes: vec![attribute],
             zoom_center: (0.0, 0.0),
             target_zoom_center: (0.0, 0.0),
             zoom_size: 4.0,
@@ -115,28 +114,40 @@ impl App {
 
     pub fn render(&self) {
         let canvas = dom::canvas("canvas");
-        clear_gl(&self.gl);
-        self.gl.use_program(Some(&self.program));
-        set_attributes(&self.gl, &self.program, &self.attributes);
-        self.gl.uniform2f(
-            self.gl.get_uniform_location(&self.program, "u_dimension").as_ref(),
+        self.program.clear_gl();
+        self.program.gl.use_program(Some(&self.program.program));
+        self.program.set_attributes();
+        self.program.gl.uniform2f(
+            self.program
+                .gl
+                .get_uniform_location(&self.program.program, "u_dimension")
+                .as_ref(),
             canvas.width() as f32,
             canvas.height() as f32,
         );
-        self.gl.uniform2f(
-            self.gl.get_uniform_location(&self.program, "u_zoom_center").as_ref(),
+        self.program.gl.uniform2f(
+            self.program
+                .gl
+                .get_uniform_location(&self.program.program, "u_zoom_center")
+                .as_ref(),
             self.zoom_center.0,
             self.zoom_center.1,
         );
-        self.gl.uniform1f(
-            self.gl.get_uniform_location(&self.program, "u_zoom_size").as_ref(),
+        self.program.gl.uniform1f(
+            self.program
+                .gl
+                .get_uniform_location(&self.program.program, "u_zoom_size")
+                .as_ref(),
             self.zoom_size,
         );
-        self.gl.uniform1i(
-            self.gl.get_uniform_location(&self.program, "u_max_iterations").as_ref(),
+        self.program.gl.uniform1i(
+            self.program
+                .gl
+                .get_uniform_location(&self.program.program, "u_max_iterations")
+                .as_ref(),
             self.max_iterations,
         );
-        self.gl.draw_arrays(WebGlRenderingContext::TRIANGLES, 0, 3);
+        self.program.gl.draw_arrays(WebGlRenderingContext::TRIANGLES, 0, 3);
     }
 }
 
