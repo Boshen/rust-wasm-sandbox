@@ -5,7 +5,7 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
 use web_sys::WebGlRenderingContext;
 
-use crate::gl::{Attribute, AttributeType, Dimension, Program, ProgramDescription};
+use crate::gl::{Attribute, AttributeType, Dimension, Program, ProgramDescription, UniformValue};
 
 struct App {
     program: Program,
@@ -90,14 +90,8 @@ impl App {
         mat4::rotate(&mut x_rotation_matrix, &identity_matrix, angle / 4.0, &[1., 0., 0.]);
         mat4::mul(&mut world_matrix, &y_rotation_matrix, &x_rotation_matrix);
 
-        self.program.gl.uniform_matrix4fv_with_f32_array(
-            self.program
-                .gl
-                .get_uniform_location(&self.program.program, "u_world_matrix")
-                .as_ref(),
-            false,
-            &world_matrix,
-        );
+        self.program
+            .set_uniform("u_world_matrix", UniformValue::Matrix4(world_matrix));
     }
 
     pub fn render(&self, t: f32) {
@@ -118,23 +112,11 @@ impl App {
 
         self.set_rotation(t);
 
-        self.program.gl.uniform_matrix4fv_with_f32_array(
-            self.program
-                .gl
-                .get_uniform_location(&self.program.program, "u_projection_matrix")
-                .as_ref(),
-            false,
-            &project_matrix,
-        );
+        self.program
+            .set_uniform("u_projection_matrix", UniformValue::Matrix4(project_matrix));
 
-        self.program.gl.uniform_matrix4fv_with_f32_array(
-            self.program
-                .gl
-                .get_uniform_location(&self.program.program, "u_model_view_matrix")
-                .as_ref(),
-            false,
-            &model_view_matrix,
-        );
+        self.program
+            .set_uniform("u_model_view_matrix", UniformValue::Matrix4(model_view_matrix));
 
         self.program.gl.draw_elements_with_i32(
             WebGlRenderingContext::TRIANGLES,

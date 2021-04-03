@@ -5,7 +5,7 @@ use wasm_bindgen::JsValue;
 use web_sys::WebGlRenderingContext;
 
 use crate::dom;
-use crate::gl::{Attribute, AttributeType, Dimension, Program, ProgramDescription};
+use crate::gl::{Attribute, AttributeType, Dimension, Program, ProgramDescription, UniformValue};
 
 struct Dot {
     x: f32,
@@ -89,47 +89,6 @@ impl App {
         })
     }
 
-    fn set_translation(&self, dot: &Dot) {
-        self.program.gl.uniform2f(
-            self.program
-                .gl
-                .get_uniform_location(&self.program.program, "u_translation")
-                .as_ref(),
-            dot.x,
-            dot.y,
-        );
-    }
-
-    fn set_scale(&self, dot: &Dot) {
-        self.program.gl.uniform1f(
-            self.program
-                .gl
-                .get_uniform_location(&self.program.program, "u_scale")
-                .as_ref(),
-            dot.r,
-        );
-    }
-
-    fn set_alpha(&self, dot: &Dot) {
-        self.program.gl.uniform1f(
-            self.program
-                .gl
-                .get_uniform_location(&self.program.program, "u_alpha")
-                .as_ref(),
-            dot.alpha,
-        );
-    }
-
-    fn set_color(&self, dot: &Dot) {
-        self.program.gl.uniform3fv_with_f32_array(
-            self.program
-                .gl
-                .get_uniform_location(&self.program.program, "u_color")
-                .as_ref(),
-            &dot.color,
-        );
-    }
-
     fn osc(&self, n: i32) -> i32 {
         if n <= 255 {
             n
@@ -209,10 +168,11 @@ impl App {
         self.program.gl.use_program(Some(&self.program.program));
         self.program.set_attributes();
         self.dots.iter().for_each(|dot| {
-            self.set_translation(dot);
-            self.set_scale(dot);
-            self.set_alpha(dot);
-            self.set_color(dot);
+            self.program
+                .set_uniform("u_translation", UniformValue::Vector2([dot.x, dot.y]));
+            self.program.set_uniform("u_scale", UniformValue::Float(dot.r));
+            self.program.set_uniform("u_alpha", UniformValue::Float(dot.alpha));
+            self.program.set_uniform("u_color", UniformValue::Vector3(dot.color));
             self.program.gl.draw_arrays(WebGlRenderingContext::POINTS, 0, 1);
         })
     }

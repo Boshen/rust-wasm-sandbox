@@ -5,7 +5,7 @@ use wasm_bindgen::JsValue;
 use web_sys::WebGlRenderingContext;
 
 use crate::dom;
-use crate::gl::{Attribute, AttributeType, Dimension, Program, ProgramDescription};
+use crate::gl::{Attribute, AttributeType, Dimension, Program, ProgramDescription, UniformValue};
 
 struct App {
     program: Program,
@@ -117,36 +117,18 @@ impl App {
         self.program.clear_gl();
         self.program.gl.use_program(Some(&self.program.program));
         self.program.set_attributes();
-        self.program.gl.uniform2f(
-            self.program
-                .gl
-                .get_uniform_location(&self.program.program, "u_dimension")
-                .as_ref(),
-            canvas.width() as f32,
-            canvas.height() as f32,
+        self.program.set_uniform(
+            "u_dimension",
+            UniformValue::Vector2([canvas.width() as f32, canvas.height() as f32]),
         );
-        self.program.gl.uniform2f(
-            self.program
-                .gl
-                .get_uniform_location(&self.program.program, "u_zoom_center")
-                .as_ref(),
-            self.zoom_center.0,
-            self.zoom_center.1,
+        self.program.set_uniform(
+            "u_zoom_center",
+            UniformValue::Vector2([self.zoom_center.0, self.zoom_center.1]),
         );
-        self.program.gl.uniform1f(
-            self.program
-                .gl
-                .get_uniform_location(&self.program.program, "u_zoom_size")
-                .as_ref(),
-            self.zoom_size,
-        );
-        self.program.gl.uniform1i(
-            self.program
-                .gl
-                .get_uniform_location(&self.program.program, "u_max_iterations")
-                .as_ref(),
-            self.max_iterations,
-        );
+        self.program
+            .set_uniform("u_zoom_size", UniformValue::Float(self.zoom_size));
+        self.program
+            .set_uniform("u_max_iterations", UniformValue::Int(self.max_iterations));
         self.program.gl.draw_arrays(WebGlRenderingContext::TRIANGLES, 0, 3);
     }
 }

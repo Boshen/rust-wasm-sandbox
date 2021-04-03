@@ -3,7 +3,7 @@ use wasm_bindgen::JsValue;
 use web_sys::{WebGlProgram, WebGlRenderingContext, WebGlShader};
 
 use crate::dom;
-use crate::gl::{Attribute, AttributeLocation};
+use crate::gl::{Attribute, AttributeLocation, UniformValue};
 
 pub struct ProgramDescription<'a> {
     pub vertex_source: &'a str,
@@ -48,6 +48,23 @@ impl Program {
                     .bind_buffer(WebGlRenderingContext::ELEMENT_ARRAY_BUFFER, Some(element_array_buffer));
             }
         })
+    }
+
+    pub fn set_uniform(&self, name: &str, value: UniformValue) {
+        let location = self.gl.get_uniform_location(&self.program, name);
+        match value {
+            UniformValue::Int(x) => self.gl.uniform1i(location.as_ref(), x),
+            UniformValue::IVector2([x, y]) => self.gl.uniform2i(location.as_ref(), x, y),
+            UniformValue::IVector3([x, y, z]) => self.gl.uniform3i(location.as_ref(), x, y, z),
+            UniformValue::IVector4([x, y, z, w]) => self.gl.uniform4i(location.as_ref(), x, y, z, w),
+            UniformValue::Float(x) => self.gl.uniform1f(location.as_ref(), x),
+            UniformValue::Vector2([x, y]) => self.gl.uniform2f(location.as_ref(), x, y),
+            UniformValue::Vector3([x, y, z]) => self.gl.uniform3f(location.as_ref(), x, y, z),
+            UniformValue::Vector4([x, y, z, w]) => self.gl.uniform4f(location.as_ref(), x, y, z, w),
+            UniformValue::Matrix2(mat) => self.gl.uniform_matrix2fv_with_f32_array(location.as_ref(), false, &mat),
+            UniformValue::Matrix3(mat) => self.gl.uniform_matrix3fv_with_f32_array(location.as_ref(), false, &mat),
+            UniformValue::Matrix4(mat) => self.gl.uniform_matrix4fv_with_f32_array(location.as_ref(), false, &mat),
+        }
     }
 
     pub fn clear_gl(&self) {

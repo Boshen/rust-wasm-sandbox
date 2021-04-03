@@ -1,5 +1,7 @@
 use web_sys::WebGlBuffer;
 
+use crate::gl::enums::AttributeType;
+
 pub struct Attribute {
     pub name: &'static str,
     pub attribute_type: AttributeType,
@@ -12,20 +14,6 @@ pub struct AttributeLocation {
     pub attribute_type: AttributeType,
     pub buffer: WebGlBuffer,
     pub element_array_buffer: Option<WebGlBuffer>,
-}
-
-#[derive(Copy, Clone)]
-pub enum AttributeType {
-    Scalar,
-    Vector(Dimension),
-    Matrix(Dimension, Dimension),
-}
-
-#[derive(Copy, Clone)]
-pub enum Dimension {
-    D2 = 2,
-    D3 = 3,
-    D4 = 4,
 }
 
 impl AttributeLocation {
