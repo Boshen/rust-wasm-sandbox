@@ -74,7 +74,7 @@ impl App {
         face_colors.iter().flat_map(|c| c.repeat(4)).collect()
     }
 
-    fn set_rotation(&self, t: f32) {
+    fn set_world_matrix(&self, t: f32) {
         let mut world_matrix: Mat4 = [0.0; 16];
         mat4::identity(&mut world_matrix);
 
@@ -93,30 +93,31 @@ impl App {
             .set_uniform("u_world_matrix", UniformValue::Matrix4(world_matrix));
     }
 
-    pub fn render(&self, t: f32) {
-        self.program.clear_gl();
-        self.program.gl.use_program(Some(&self.program.program));
+    fn set_model_view_matrix(&self) {
+        let mut model_view_matrix: Mat4 = [0.0; 16];
+        mat4::look_at(&mut model_view_matrix, &[0., 0., -8.], &[0., 0., 0.], &[0., 1., 0.]);
+        self.program
+            .set_uniform("u_model_view_matrix", UniformValue::Matrix4(model_view_matrix));
+    }
 
-        self.program.set_attributes();
-
+    fn set_projection_matrix(&self) {
         let fov = 45.0 * PI / 180.0;
         let aspect = self.program.gl.drawing_buffer_width() as f32 / self.program.gl.drawing_buffer_height() as f32;
         let z_near = 0.1;
         let z_far = 100.0;
         let mut project_matrix: Mat4 = [0.0; 16];
-        let mut model_view_matrix: Mat4 = [0.0; 16];
-
-        mat4::look_at(&mut model_view_matrix, &[0., 0., -8.], &[0., 0., 0.], &[0., 1., 0.]);
         mat4::perspective(&mut project_matrix, fov, aspect, z_near, Some(z_far));
-
-        self.set_rotation(t);
-
         self.program
             .set_uniform("u_projection_matrix", UniformValue::Matrix4(project_matrix));
+    }
 
-        self.program
-            .set_uniform("u_model_view_matrix", UniformValue::Matrix4(model_view_matrix));
-
+    pub fn render(&self, t: f32) {
+        self.program.clear_gl();
+        self.program.gl.use_program(Some(&self.program.program));
+        self.program.set_attributes();
+        self.set_world_matrix(t);
+        self.set_model_view_matrix();
+        self.set_projection_matrix();
         self.program.draw();
     }
 }
