@@ -1,10 +1,9 @@
 use gl_matrix::{common::Mat4, mat4};
-use std::rc::Rc;
-use std::{cell::RefCell, f32::consts::PI};
+use std::{cell::RefCell, f32::consts::PI, f32::consts::TAU, rc::Rc};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
 
-use crate::geometry::Cube;
+use crate::geometry::{Cube, Sphere};
 use crate::gl::{Attribute, AttributeType, Dimension, Program, ProgramDescription, UniformValue};
 
 struct App {
@@ -37,23 +36,24 @@ impl App {
     "#;
 
         let cube = Cube::new(1, 1, 1);
+        let sphere = Sphere::new(1.0, 32, 32, 0.0, TAU, 0.0, TAU);
         let program = Program::new(
             "canvas",
             ProgramDescription {
                 vertex_source,
                 fragment_source,
-                indices: Some(cube.indices),
+                indices: Some(sphere.indices),
                 attributes: vec![
                     Attribute {
                         name: "a_position",
                         attribute_type: AttributeType::Vector(Dimension::D3),
-                        vertices: cube.vertices,
+                        vertices: sphere.vertices,
                     },
-                    Attribute {
-                        name: "a_color",
-                        attribute_type: AttributeType::Vector(Dimension::D4),
-                        vertices: App::cube_colors(),
-                    },
+                    // Attribute {
+                    // name: "a_color",
+                    // attribute_type: AttributeType::Vector(Dimension::D4),
+                    // vertices: App::cube_colors(),
+                    // },
                 ],
             },
         )?;
