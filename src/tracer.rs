@@ -5,7 +5,7 @@ use wasm_bindgen::JsValue;
 use web_sys::WebGlRenderingContext;
 
 use crate::dom;
-use crate::gl::{Attribute, AttributeType, Dimension, Program, ProgramDescription, UniformValue};
+use crate::gl::{Attribute, AttributeType, Dimension, Object, Program, ProgramDescription, UniformValue};
 
 struct Dot {
     x: f32,
@@ -77,6 +77,7 @@ impl App {
                     attribute_type: AttributeType::Vector(Dimension::D2),
                     vertices: vec![0.0, 0.0],
                 }],
+                objects: vec![] as Vec<Object>,
             },
         )?;
 
@@ -164,7 +165,7 @@ impl App {
     }
 
     pub fn render(&self) {
-        self.program.clear_gl();
+        Program::clear_gl(&self.program.gl);
         self.program.gl.use_program(Some(&self.program.program));
         self.program.set_attributes();
         self.dots.iter().for_each(|dot| {

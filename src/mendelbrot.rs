@@ -4,7 +4,7 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
 
 use crate::dom;
-use crate::gl::{Attribute, AttributeType, Dimension, Program, ProgramDescription, UniformValue};
+use crate::gl::{Attribute, AttributeType, Dimension, Object, Program, ProgramDescription, UniformValue};
 
 struct App {
     program: Program,
@@ -72,6 +72,7 @@ impl App {
                     attribute_type: AttributeType::Vector(Dimension::D2),
                     vertices: vec![-1.0, -1.0, 3.0, -1.0, -1.0, 3.0],
                 }],
+                objects: vec![] as Vec<Object>,
             },
         )?;
 
@@ -113,7 +114,7 @@ impl App {
 
     pub fn render(&self) {
         let canvas = dom::canvas("canvas");
-        self.program.clear_gl();
+        Program::clear_gl(&self.program.gl);
         self.program.gl.use_program(Some(&self.program.program));
         self.program.set_attributes();
         self.program.set_uniform(
@@ -128,7 +129,7 @@ impl App {
             .set_uniform("u_zoom_size", UniformValue::Float(self.zoom_size));
         self.program
             .set_uniform("u_max_iterations", UniformValue::Int(self.max_iterations));
-        self.program.draw();
+        self.program.render();
     }
 }
 

@@ -4,7 +4,6 @@ pub struct Sphere {
     pub indices: Vec<u16>,
     pub vertices: Vec<f32>,
 }
-// ( radius = 1, width_segments = 8, height_segments = 6, phi_start = 0, phi_length = Math.PI * 2, theta_start = 0, theta_length = Math.PI ) {
 
 impl Sphere {
     pub fn new(
@@ -56,13 +55,11 @@ impl Sphere {
                     indices.push(a);
                     indices.push(b);
                     indices.push(d);
-                    web_sys::console::log_3(&a.into(), &b.into(), &c.into());
                 }
                 if iy != height_segments - 1 || theta_end < PI {
                     indices.push(b);
                     indices.push(c);
                     indices.push(d);
-                    web_sys::console::log_3(&b.into(), &c.into(), &d.into());
                 }
             }
         }

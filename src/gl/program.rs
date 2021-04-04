@@ -1,15 +1,15 @@
-use wasm_bindgen::JsCast;
 use wasm_bindgen::JsValue;
 use web_sys::{WebGlBuffer, WebGlProgram, WebGlRenderingContext, WebGlShader};
 
 use crate::dom;
-use crate::gl::{Attribute, AttributeLocation, UniformValue};
+use crate::gl::{Attribute, AttributeLocation, Object, UniformValue};
 
 pub struct ProgramDescription<'a> {
     pub vertex_source: &'a str,
     pub fragment_source: &'a str,
     pub indices: Option<Vec<u16>>,
     pub attributes: Vec<Attribute>,
+    pub objects: Vec<Object>,
 }
 
 pub struct Program {
@@ -17,6 +17,7 @@ pub struct Program {
     pub program: WebGlProgram,
     pub indices_buffer: Option<(WebGlBuffer, i32)>,
     pub attributes: Vec<AttributeLocation>,
+    pub objects: Vec<Object>,
 }
 
 impl Program {
@@ -31,10 +32,16 @@ impl Program {
             program,
             indices_buffer,
             attributes,
+            objects: desc.objects,
         })
     }
 
-    pub fn draw(&self) {
+    pub fn prepare_render(&self) {
+        self.gl.use_program(Some(&self.program));
+        self.set_attributes();
+    }
+
+    pub fn render(&self) {
         if let Some((_buffer, n)) = self.indices_buffer.as_ref() {
             self.gl.draw_elements_with_i32(
                 WebGlRenderingContext::TRIANGLES,
@@ -84,13 +91,11 @@ impl Program {
         }
     }
 
-    pub fn clear_gl(&self) {
-        self.gl
-            .viewport(0, 0, self.gl.drawing_buffer_width(), self.gl.drawing_buffer_height());
-        self.gl.clear_color(1.0, 1.0, 1.0, 1.0);
-        self.gl.clear_depth(1.0);
-        self.gl
-            .clear(WebGlRenderingContext::COLOR_BUFFER_BIT | WebGlRenderingContext::DEPTH_BUFFER_BIT);
+    pub fn clear_gl(gl: &WebGlRenderingContext) {
+        gl.viewport(0, 0, gl.drawing_buffer_width(), gl.drawing_buffer_height());
+        gl.clear_color(1.0, 1.0, 1.0, 1.0);
+        gl.clear_depth(1.0);
+        gl.clear(WebGlRenderingContext::COLOR_BUFFER_BIT | WebGlRenderingContext::DEPTH_BUFFER_BIT);
     }
 
     pub fn init_indices_buffer(gl: &WebGlRenderingContext, indices: &Option<Vec<u16>>) -> Option<(WebGlBuffer, i32)> {
@@ -137,10 +142,7 @@ impl Program {
 
     pub fn init_gl(canvas_id: &'static str) -> Result<WebGlRenderingContext, JsValue> {
         let canvas = dom::canvas(canvas_id);
-        let gl = canvas
-            .get_context("webgl")?
-            .unwrap()
-            .dyn_into::<WebGlRenderingContext>()?;
+        let gl = dom::canvas_context::<WebGlRenderingContext>(&canvas, "webgl");
 
         canvas.set_width(canvas.client_width() as u32);
         canvas.set_height(canvas.client_height() as u32);
