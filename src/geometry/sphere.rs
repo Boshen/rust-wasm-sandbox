@@ -1,8 +1,10 @@
 use core::f32::consts::PI;
+use gl_matrix::vec3;
 
 pub struct Sphere {
     pub indices: Vec<u16>,
     pub vertices: Vec<f32>,
+    pub normals: Vec<f32>,
 }
 
 impl Sphere {
@@ -24,6 +26,7 @@ impl Sphere {
         let mut vertex = (0.0, 0.0, 0.0);
         let mut indices = vec![] as Vec<u16>;
         let mut vertices = vec![] as Vec<f32>;
+        let mut normals = vec![] as Vec<f32>;
 
         for iy in 0..(height_segments + 1) {
             let mut vertices_row = vec![];
@@ -37,6 +40,12 @@ impl Sphere {
                 vertices.push(vertex.0);
                 vertices.push(vertex.1);
                 vertices.push(vertex.2);
+
+                let mut normal = [0.0; 3];
+                vec3::normalize(&mut normal, &[vertex.0, vertex.1, vertex.2]);
+                normals.push(normal[1]);
+                normals.push(normal[1]);
+                normals.push(normal[2]);
 
                 vertices_row.push(index);
                 index += 1;
@@ -64,6 +73,10 @@ impl Sphere {
             }
         }
 
-        Sphere { vertices, indices }
+        Sphere {
+            vertices,
+            indices,
+            normals,
+        }
     }
 }
