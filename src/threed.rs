@@ -1,5 +1,5 @@
 use gl_matrix::{common::Mat4, mat4, vec3};
-use std::f32::consts::{FRAC_PI_2, PI, TAU};
+use std::f32::consts::{FRAC_PI_4, PI, TAU};
 use std::{cell::RefCell, rc::Rc};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
@@ -21,32 +21,36 @@ impl App {
         attribute vec4 a_position;
         attribute vec4 a_color;
         attribute vec3 a_normal;
-        uniform mat4 u_world_matrix;
+
         uniform mat4 u_model_view_matrix;
         uniform mat4 u_projection_matrix;
+        uniform mat4 u_normal_matrix;
+
         varying vec4 v_color;
         varying vec3 v_normal;
 
         void main() {
-          gl_Position = u_projection_matrix * u_model_view_matrix * u_world_matrix * a_position;
-          v_color = vec4(a_color.xyz, 1.0);
-          v_normal = a_normal;
+          gl_Position = u_projection_matrix * u_model_view_matrix * a_position;
+          v_color = a_color;
+          v_normal = mat3(u_normal_matrix) * a_normal;
         }
     "#;
         let fragment_source = r#"
         precision mediump float;
+
         varying vec4 v_color;
         varying vec3 v_normal;
-        uniform vec3 u_reverse_light_direction;
+        uniform vec3 u_light_direction;
+
         void main() {
           vec3 normal = normalize(v_normal);
-          float light = dot(normal, u_reverse_light_direction);
+          float light = max(dot(normal, u_light_direction), 0.0);
           gl_FragColor = v_color;
           gl_FragColor.rgb *= light;
         }
     "#;
 
-        let sphere = Sphere::new(1.0, 32, 32, 0.0, TAU, 0.0, TAU);
+        let sphere = Sphere::new(1.0, 128, 128, 0.0, TAU, 0.0, TAU);
         let sphere_colors = sphere.indices.iter().map(|_| 1.0).collect();
         let sphere_program = Program::new(
             "canvas",
@@ -105,11 +109,11 @@ impl App {
                 ],
                 objects: vec![
                     Object {
-                        translation: [1.0, 1.0, 1.0],
+                        translation: [2.0, -2.0, 2.0],
                         rotation: [1.0, 0.0, 0.0],
                     },
                     Object {
-                        translation: [2.0, 2.0, 2.0],
+                        translation: [-2.0, 2.0, 2.0],
                         rotation: [2.0, 0.0, 0.0],
                     },
                 ],
@@ -124,45 +128,56 @@ impl App {
         })
     }
 
-    fn get_reverse_light_direction(&self) -> UniformValue {
-        let mut reverse_light_direction = [0.0; 3];
-        vec3::normalize(&mut reverse_light_direction, &[0.5, 0.7, 1.0]);
-        UniformValue::Vector3(reverse_light_direction)
+    fn get_light_direction(&self) -> UniformValue {
+        let mut light_direction = [0.0; 3];
+        vec3::normalize(&mut light_direction, &[0.0, 0.0, 1.0]);
+        UniformValue::Vector3(light_direction)
     }
 
-    fn get_world_matrix(&self, object: &Object) -> UniformValue {
-        let mut world_matrix: Mat4 = [0.0; 16];
-        let mut translation_matrix: Mat4 = [0.; 16];
-        let mut x_rotation_matrix: Mat4 = [0.; 16];
-        let mut y_rotation_matrix: Mat4 = [0.; 16];
-        mat4::translate(&mut translation_matrix, &mat4::create(), &object.translation);
+    fn get_model_view_matrix(&self, object: &Object) -> (UniformValue, UniformValue) {
+        let mut model_view_matrix = mat4::create();
+        let mut camera_matrix = mat4::create();
+        let mut view_matrix = mat4::create();
+        let mut translation_matrix = mat4::create();
+        let mut scale_matrix = mat4::create();
+        let mut x_rotation_matrix = mat4::create();
+        let mut y_rotation_matrix = mat4::create();
+        let mut z_rotation_matrix = mat4::create();
+        mat4::look_at(&mut camera_matrix, &[0., 0., -8.], &[0., 0., 0.], &[0., 1., 0.]);
+        mat4::invert(&mut view_matrix, &camera_matrix);
+        mat4::scale(&mut scale_matrix, &mat4::create(), &[1.0; 3]);
+        mat4::translate(&mut translation_matrix, &scale_matrix, &object.translation);
         mat4::rotate_x(&mut x_rotation_matrix, &translation_matrix, object.rotation[0]);
         mat4::rotate_y(&mut y_rotation_matrix, &x_rotation_matrix, object.rotation[1]);
-        mat4::rotate_z(&mut world_matrix, &x_rotation_matrix, object.rotation[2]);
-        UniformValue::Matrix4(world_matrix)
-    }
-
-    fn get_model_view_matrix(&self) -> UniformValue {
-        let mut model_view_matrix: Mat4 = [0.0; 16];
-        mat4::look_at(&mut model_view_matrix, &[0., 0., -8.], &[0., 0., 0.], &[0., 1., 0.]);
-        UniformValue::Matrix4(model_view_matrix)
+        mat4::rotate_z(&mut z_rotation_matrix, &y_rotation_matrix, object.rotation[2]);
+        mat4::mul(&mut model_view_matrix, &view_matrix, &z_rotation_matrix);
+        let normal_matrix = self.get_normal_matrix(&model_view_matrix);
+        (UniformValue::Matrix4(model_view_matrix), normal_matrix)
     }
 
     fn get_projection_matrix(&self, aspect: f32) -> UniformValue {
         let fov = 45.0 * PI / 180.0;
-        let z_near = 0.1;
-        let z_far = 100.0;
+        let z_near = 1.0;
+        let z_far = 2000.0;
         let mut project_matrix: Mat4 = [0.0; 16];
         mat4::perspective(&mut project_matrix, fov, aspect, z_near, Some(z_far));
         UniformValue::Matrix4(project_matrix)
     }
 
+    fn get_normal_matrix(&self, model_view_matrix: &Mat4) -> UniformValue {
+        let mut invert_matrix = mat4::create();
+        let mut normal_matrix = mat4::create();
+        mat4::invert(&mut invert_matrix, &model_view_matrix);
+        mat4::transpose(&mut normal_matrix, &invert_matrix);
+        UniformValue::Matrix4(normal_matrix)
+    }
+
     pub fn update(&mut self, t: f32) {
         self.programs.iter_mut().for_each(|p| {
             p.objects.iter_mut().for_each(|o| {
-                o.rotation[0] = t * FRAC_PI_2;
-                o.rotation[1] = t * PI;
-                o.rotation[2] = t * PI;
+                o.rotation[0] = t * FRAC_PI_4;
+                o.rotation[1] = t * FRAC_PI_4;
+                o.rotation[2] = t * FRAC_PI_4;
             })
         })
     }
@@ -172,15 +187,12 @@ impl App {
         self.programs.iter().for_each(|p| {
             p.prepare_render();
             p.objects.iter().for_each(|o| {
-                p.set_uniform("u_reverse_light_direction", self.get_reverse_light_direction());
-                p.set_uniform("u_world_matrix", self.get_world_matrix(&o));
-                p.set_uniform("u_model_view_matrix", self.get_model_view_matrix());
-                p.set_uniform(
-                    "u_projection_matrix",
-                    self.get_projection_matrix(
-                        p.gl.drawing_buffer_width() as f32 / p.gl.drawing_buffer_height() as f32,
-                    ),
-                );
+                p.set_uniform("u_light_direction", self.get_light_direction());
+                let (model_view_matrix, normal_matrix) = self.get_model_view_matrix(&o);
+                p.set_uniform("u_model_view_matrix", model_view_matrix);
+                p.set_uniform("u_normal_matrix", normal_matrix);
+                let aspect = p.gl.drawing_buffer_width() as f32 / p.gl.drawing_buffer_height() as f32;
+                p.set_uniform("u_projection_matrix", self.get_projection_matrix(aspect));
                 p.render();
             })
         })
