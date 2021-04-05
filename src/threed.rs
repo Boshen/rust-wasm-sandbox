@@ -27,7 +27,7 @@ impl App {
 
         void main() {
           gl_Position = u_projection_matrix * u_model_view_matrix * u_world_matrix * a_position;
-          v_color = a_color;
+          v_color = vec4(a_color.xyz, 1.0);
         }
     "#;
         let fragment_source = r#"
@@ -39,17 +39,25 @@ impl App {
     "#;
 
         let sphere = Sphere::new(1.0, 32, 32, 0.0, TAU, 0.0, TAU);
+        let sphere_colors = sphere.indices.iter().map(|_| 1.0).collect();
         let sphere_program = Program::new(
             "canvas",
             ProgramDescription {
                 vertex_source,
                 fragment_source,
                 indices: Some(sphere.indices),
-                attributes: vec![Attribute {
-                    name: "a_position",
-                    attribute_type: AttributeType::Vector(Dimension::D3),
-                    vertices: sphere.vertices,
-                }],
+                attributes: vec![
+                    Attribute {
+                        name: "a_position",
+                        attribute_type: AttributeType::Vector(Dimension::D3),
+                        vertices: sphere.vertices,
+                    },
+                    Attribute {
+                        name: "a_color",
+                        attribute_type: AttributeType::Vector(Dimension::D4),
+                        vertices: sphere_colors,
+                    },
+                ],
                 objects: vec![Object {
                     translation: [0.0, 0.0, 0.0],
                     rotation: [0.0, 0.0, 0.0],
@@ -58,6 +66,7 @@ impl App {
         )?;
 
         let cube = Cube::new(1, 1, 1);
+        let cube_colors = [1.0; 96];
         let cube_program = Program::new(
             "canvas",
             ProgramDescription {
@@ -73,7 +82,7 @@ impl App {
                     Attribute {
                         name: "a_color",
                         attribute_type: AttributeType::Vector(Dimension::D4),
-                        vertices: App::cube_colors(),
+                        vertices: cube_colors.to_vec(),
                     },
                 ],
                 objects: vec![
@@ -93,21 +102,8 @@ impl App {
         let gl = dom::canvas_context::<WebGlRenderingContext>(&canvas, "webgl");
         Ok(App {
             gl,
-            programs: vec![cube_program],
+            programs: vec![cube_program, sphere_program],
         })
-    }
-
-    #[rustfmt::skip]
-    fn cube_colors() -> Vec<f32>{
-        let face_colors = vec![
-            vec![0.0,  0.0,  0.0,  1.0],    // Front face: black
-            vec![1.0,  0.0,  0.0,  1.0],    // Back face: red
-            vec![0.0,  1.0,  0.0,  1.0],    // Top face: green
-            vec![0.0,  0.0,  1.0,  1.0],    // Bottom face: blue
-            vec![1.0,  1.0,  0.0,  1.0],    // Right face: yellow
-            vec![1.0,  0.0,  1.0,  1.0],    // Left face: purple
-        ];
-        face_colors.iter().flat_map(|c| c.repeat(4)).collect()
     }
 
     fn get_world_matrix(&self, object: &Object) -> UniformValue {
