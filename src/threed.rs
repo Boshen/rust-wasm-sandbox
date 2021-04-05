@@ -1,4 +1,4 @@
-use gl_matrix::{common::Mat4, mat4};
+use gl_matrix::{common::Mat4, mat4, vec3};
 use std::f32::consts::{FRAC_PI_2, PI, TAU};
 use std::{cell::RefCell, rc::Rc};
 use wasm_bindgen::prelude::*;
@@ -20,21 +20,29 @@ impl App {
         let vertex_source = r#"
         attribute vec4 a_position;
         attribute vec4 a_color;
+        attribute vec3 a_normal;
         uniform mat4 u_world_matrix;
         uniform mat4 u_model_view_matrix;
         uniform mat4 u_projection_matrix;
         varying vec4 v_color;
+        varying vec3 v_normal;
 
         void main() {
           gl_Position = u_projection_matrix * u_model_view_matrix * u_world_matrix * a_position;
           v_color = vec4(a_color.xyz, 1.0);
+          v_normal = a_normal;
         }
     "#;
         let fragment_source = r#"
         precision mediump float;
         varying vec4 v_color;
+        varying vec3 v_normal;
+        uniform vec3 u_reverse_light_direction;
         void main() {
+          vec3 normal = normalize(v_normal);
+          float light = dot(normal, u_reverse_light_direction);
           gl_FragColor = v_color;
+          gl_FragColor.rgb *= light;
         }
     "#;
 
@@ -56,6 +64,11 @@ impl App {
                         name: "a_color",
                         attribute_type: AttributeType::Vector(Dimension::D4),
                         vertices: sphere_colors,
+                    },
+                    Attribute {
+                        name: "a_normal",
+                        attribute_type: AttributeType::Vector(Dimension::D2),
+                        vertices: sphere.normals,
                     },
                 ],
                 objects: vec![Object {
@@ -84,6 +97,11 @@ impl App {
                         attribute_type: AttributeType::Vector(Dimension::D4),
                         vertices: cube_colors.to_vec(),
                     },
+                    Attribute {
+                        name: "a_normal",
+                        attribute_type: AttributeType::Vector(Dimension::D3),
+                        vertices: cube.normals,
+                    },
                 ],
                 objects: vec![
                     Object {
@@ -104,6 +122,12 @@ impl App {
             gl,
             programs: vec![cube_program, sphere_program],
         })
+    }
+
+    fn get_reverse_light_direction(&self) -> UniformValue {
+        let mut reverse_light_direction = [0.0; 3];
+        vec3::normalize(&mut reverse_light_direction, &[0.5, 0.7, 1.0]);
+        UniformValue::Vector3(reverse_light_direction)
     }
 
     fn get_world_matrix(&self, object: &Object) -> UniformValue {
@@ -148,6 +172,7 @@ impl App {
         self.programs.iter().for_each(|p| {
             p.prepare_render();
             p.objects.iter().for_each(|o| {
+                p.set_uniform("u_reverse_light_direction", self.get_reverse_light_direction());
                 p.set_uniform("u_world_matrix", self.get_world_matrix(&o));
                 p.set_uniform("u_model_view_matrix", self.get_model_view_matrix());
                 p.set_uniform(
