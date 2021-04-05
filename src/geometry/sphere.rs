@@ -43,7 +43,7 @@ impl Sphere {
 
                 let mut normal = [0.0; 3];
                 vec3::normalize(&mut normal, &[vertex.0, vertex.1, vertex.2]);
-                normals.push(normal[1]);
+                normals.push(normal[0]);
                 normals.push(normal[1]);
                 normals.push(normal[2]);
 

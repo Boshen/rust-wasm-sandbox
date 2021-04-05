@@ -44,7 +44,7 @@ impl App {
 
         void main() {
           vec3 normal = normalize(v_normal);
-          float light = max(dot(normal, u_light_direction), 0.0);
+          float light = pow(abs(dot(normal, u_light_direction)), 2.0);
           gl_FragColor = v_color;
           gl_FragColor.rgb *= light;
         }
@@ -135,22 +135,26 @@ impl App {
     }
 
     fn get_model_view_matrix(&self, object: &Object) -> (UniformValue, UniformValue) {
-        let mut model_view_matrix = mat4::create();
-        let mut camera_matrix = mat4::create();
-        let mut view_matrix = mat4::create();
+        let mut model_matrix = mat4::create();
         let mut translation_matrix = mat4::create();
-        let mut scale_matrix = mat4::create();
         let mut x_rotation_matrix = mat4::create();
         let mut y_rotation_matrix = mat4::create();
         let mut z_rotation_matrix = mat4::create();
-        mat4::look_at(&mut camera_matrix, &[0., 0., -8.], &[0., 0., 0.], &[0., 1., 0.]);
-        mat4::invert(&mut view_matrix, &camera_matrix);
-        mat4::scale(&mut scale_matrix, &mat4::create(), &[1.0; 3]);
-        mat4::translate(&mut translation_matrix, &scale_matrix, &object.translation);
+
+        mat4::translate(&mut translation_matrix, &mat4::create(), &object.translation);
         mat4::rotate_x(&mut x_rotation_matrix, &translation_matrix, object.rotation[0]);
         mat4::rotate_y(&mut y_rotation_matrix, &x_rotation_matrix, object.rotation[1]);
         mat4::rotate_z(&mut z_rotation_matrix, &y_rotation_matrix, object.rotation[2]);
-        mat4::mul(&mut model_view_matrix, &view_matrix, &z_rotation_matrix);
+        mat4::scale(&mut model_matrix, &z_rotation_matrix, &[1.0; 3]);
+
+        let mut camera_matrix = mat4::create();
+        let mut view_matrix = mat4::create();
+        mat4::look_at(&mut camera_matrix, &[0., 0., -8.], &[0., 0., 0.], &[0., 1., 0.]);
+        mat4::invert(&mut view_matrix, &camera_matrix);
+
+        let mut model_view_matrix = mat4::create();
+        mat4::mul(&mut model_view_matrix, &view_matrix, &model_matrix);
+
         let normal_matrix = self.get_normal_matrix(&model_view_matrix);
         (UniformValue::Matrix4(model_view_matrix), normal_matrix)
     }
@@ -175,9 +179,9 @@ impl App {
     pub fn update(&mut self, t: f32) {
         self.programs.iter_mut().for_each(|p| {
             p.objects.iter_mut().for_each(|o| {
-                o.rotation[0] = t * FRAC_PI_4;
+                o.rotation[0] = 0.0;
                 o.rotation[1] = t * FRAC_PI_4;
-                o.rotation[2] = t * FRAC_PI_4;
+                o.rotation[2] = 0.0;
             })
         })
     }
