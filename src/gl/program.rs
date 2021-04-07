@@ -93,7 +93,7 @@ impl Program {
 
     pub fn clear_gl(gl: &WebGlRenderingContext) {
         gl.viewport(0, 0, gl.drawing_buffer_width(), gl.drawing_buffer_height());
-        gl.clear_color(1.0, 1.0, 1.0, 1.0);
+        gl.clear_color(0.08, 0.08, 0.08, 1.0);
         gl.clear_depth(1.0);
         gl.clear(WebGlRenderingContext::COLOR_BUFFER_BIT | WebGlRenderingContext::DEPTH_BUFFER_BIT);
     }

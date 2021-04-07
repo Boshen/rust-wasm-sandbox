@@ -25,24 +25,27 @@ impl App {
         uniform mat4 u_model_view_matrix;
         uniform mat4 u_projection_matrix;
         uniform mat4 u_normal_matrix;
-        uniform vec3 u_light_direction;
 
         varying vec4 v_color;
+        varying vec3 v_normal;
 
         void main() {
           gl_Position = u_projection_matrix * u_model_view_matrix * a_position;
-          vec3 transformed_normal = mat3(u_normal_matrix) * a_normal;
-          float light = max(dot(transformed_normal, u_light_direction), 0.0);
-          v_color = a_color * light;
+          v_color = a_color;
+          v_normal = mat3(u_normal_matrix) * a_normal;
         }
     "#;
         let fragment_source = r#"
         precision mediump float;
 
+        uniform vec3 u_light_direction;
+
         varying vec4 v_color;
+        varying vec3 v_normal;
 
         void main() {
-          gl_FragColor = vec4(v_color.rgb, 1.0);
+          float light = max(dot(v_normal, u_light_direction), 0.0);
+          gl_FragColor = vec4(v_color.rgb * light, 1.0);
         }
     "#;
 
