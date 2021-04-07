@@ -5,7 +5,7 @@ use wasm_bindgen::JsValue;
 use web_sys::WebGlRenderingContext;
 
 use crate::dom;
-use crate::gl::{Attribute, AttributeType, Dimension, Object, Program, ProgramDescription, UniformValue};
+use crate::gl::{Attribute, AttributeType, Dimension, Program, ProgramDescription, UniformValue};
 
 struct Dot {
     x: f32,
@@ -71,13 +71,12 @@ impl App {
             ProgramDescription {
                 vertex_source,
                 fragment_source,
-                indices: None,
                 attributes: vec![Attribute {
                     name: "a_position",
                     attribute_type: AttributeType::Vector(Dimension::D2),
                     vertices: vec![0.0, 0.0],
                 }],
-                objects: vec![] as Vec<Object>,
+                ..Default::default()
             },
         )?;
 

@@ -21,16 +21,24 @@ impl App {
         let gl = dom::canvas_context::<WebGlRenderingContext>(&canvas, "webgl");
         let cube_program = App::get_cube_program(&App::get_vertex_source(), &App::get_fragment_source())?;
 
-        let sphere_objects = vec![Object {
-            translation: [0.0, 0.0, 0.0],
-            rotation: [0.0, 0.0, 0.0],
-        }];
+        let sphere_objects = vec![Default::default()];
         let sphere_program =
             App::get_sphere_program(&App::get_vertex_source(), &App::get_fragment_source(), sphere_objects)?;
 
+        let glow_objects = vec![Object {
+            scale: [1.35; 3],
+            translation: [-0.08, 0.08, 2.0],
+            ..Default::default()
+        }];
+        let glow_program = App::get_sphere_program(
+            &App::get_vertex_source(),
+            &App::get_glow_fragment_source(),
+            glow_objects,
+        )?;
+
         Ok(App {
             gl,
-            programs: vec![cube_program, sphere_program],
+            programs: vec![cube_program, glow_program, sphere_program],
         })
     }
 
@@ -48,7 +56,8 @@ impl App {
         varying vec3 v_normal;
 
         void main() {
-          gl_Position = u_projection_matrix * u_model_view_matrix * a_position;
+          vec4 pos = u_model_view_matrix * a_position;
+          gl_Position = u_projection_matrix * pos;
           v_color = a_color;
           v_normal = mat3(u_normal_matrix) * a_normal;
         }
@@ -63,10 +72,27 @@ impl App {
 
         varying vec4 v_color;
         varying vec3 v_normal;
+        varying float v_edge;
 
         void main() {
           float light = max(dot(v_normal, u_light_direction), 0.0);
           gl_FragColor = vec4(v_color.rgb * light, 1.0);
+        }
+    "#
+    }
+
+    fn get_glow_fragment_source() -> &'static str {
+        r#"
+        precision mediump float;
+
+        uniform vec3 u_light_direction;
+
+        varying vec4 v_color;
+        varying vec3 v_normal;
+
+        void main() {
+          float light = pow(0.5 - dot(v_normal, vec3(0.0, 0.0, -1.0)), 4.0);
+          gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0) * light;
         }
     "#
     }
@@ -77,7 +103,7 @@ impl App {
         objects: Vec<Object>,
     ) -> Result<Program, JsValue> {
         let sphere = Sphere::new(1.0, 128, 128, 0.0, TAU, 0.0, TAU);
-        let sphere_colors = sphere.indices.iter().map(|_| 1.0).collect();
+        let sphere_colors = sphere.indices.iter().map(|_| 0.9).collect();
         Program::new(
             "canvas",
             ProgramDescription {
@@ -102,6 +128,7 @@ impl App {
                         vertices: sphere.normals,
                     },
                 ],
+                ..Default::default()
             },
         )
     }
@@ -136,12 +163,15 @@ impl App {
                     Object {
                         translation: [2.0, -2.0, 2.0],
                         rotation: [1.0, 0.0, 0.0],
+                        ..Default::default()
                     },
                     Object {
                         translation: [-2.0, 2.0, 2.0],
                         rotation: [2.0, 0.0, 0.0],
+                        ..Default::default()
                     },
                 ],
+                ..Default::default()
             },
         )
     }
@@ -163,7 +193,7 @@ impl App {
         mat4::rotate_x(&mut x_rotation_matrix, &translation_matrix, object.rotation[0]);
         mat4::rotate_y(&mut y_rotation_matrix, &x_rotation_matrix, object.rotation[1]);
         mat4::rotate_z(&mut z_rotation_matrix, &y_rotation_matrix, object.rotation[2]);
-        mat4::scale(&mut model_matrix, &z_rotation_matrix, &[1.0; 3]);
+        mat4::scale(&mut model_matrix, &z_rotation_matrix, &object.scale);
 
         let mut camera_matrix = mat4::create();
         let mut view_matrix = mat4::create();

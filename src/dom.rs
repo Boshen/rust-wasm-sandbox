@@ -4,6 +4,12 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys::HtmlCanvasElement;
 
+#[allow(dead_code)]
+#[wasm_bindgen]
+pub struct ContextOptions {
+    alpha: bool,
+}
+
 pub fn window() -> web_sys::Window {
     web_sys::window().unwrap()
 }
@@ -22,7 +28,12 @@ pub fn canvas(id: &str) -> HtmlCanvasElement {
 }
 
 pub fn canvas_context<T: JsCast>(canvas: &HtmlCanvasElement, ctx: &str) -> T {
-    canvas.get_context(ctx).unwrap().unwrap().dyn_into::<T>().unwrap()
+    canvas
+        .get_context_with_context_options(ctx, &(ContextOptions { alpha: false }).into())
+        .unwrap()
+        .unwrap()
+        .dyn_into::<T>()
+        .unwrap()
 }
 
 fn run_request_animation_frame(f: &Closure<dyn FnMut(f32)>) {

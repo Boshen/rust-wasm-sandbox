@@ -4,7 +4,7 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
 
 use crate::dom;
-use crate::gl::{Attribute, AttributeType, Dimension, Object, Program, ProgramDescription, UniformValue};
+use crate::gl::{Attribute, AttributeType, Dimension, Program, ProgramDescription, UniformValue};
 
 struct App {
     program: Program,
@@ -66,13 +66,12 @@ impl App {
             ProgramDescription {
                 vertex_source,
                 fragment_source,
-                indices: None,
                 attributes: vec![Attribute {
                     name: "a_position",
                     attribute_type: AttributeType::Vector(Dimension::D2),
                     vertices: vec![-1.0, -1.0, 3.0, -1.0, -1.0, 3.0],
                 }],
-                objects: vec![] as Vec<Object>,
+                ..Default::default()
             },
         )?;
 

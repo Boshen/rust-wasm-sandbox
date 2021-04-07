@@ -4,12 +4,33 @@ use web_sys::{WebGlBuffer, WebGlProgram, WebGlRenderingContext, WebGlShader};
 use crate::dom;
 use crate::gl::{Attribute, AttributeLocation, Object, UniformValue};
 
+#[allow(dead_code)]
+pub enum RenderSide {
+    FrontSide,
+    BackSide,
+    DoubleSide,
+}
+
 pub struct ProgramDescription<'a> {
     pub vertex_source: &'a str,
     pub fragment_source: &'a str,
     pub indices: Option<Vec<u16>>,
     pub attributes: Vec<Attribute>,
     pub objects: Vec<Object>,
+    pub render_side: RenderSide,
+}
+
+impl Default for ProgramDescription<'_> {
+    fn default() -> Self {
+        ProgramDescription {
+            vertex_source: "",
+            fragment_source: "",
+            indices: None,
+            attributes: vec![],
+            objects: vec![],
+            render_side: RenderSide::FrontSide,
+        }
+    }
 }
 
 pub struct Program {
@@ -18,6 +39,7 @@ pub struct Program {
     pub indices_buffer: Option<(WebGlBuffer, i32)>,
     pub attributes: Vec<AttributeLocation>,
     pub objects: Vec<Object>,
+    pub render_side: RenderSide,
 }
 
 impl Program {
@@ -26,13 +48,13 @@ impl Program {
         let program = Program::create_program(&gl, desc.vertex_source, desc.fragment_source)?;
         let attributes = Program::init_attributes(&gl, &program, &desc.attributes);
         let indices_buffer = Program::init_indices_buffer(&gl, &desc.indices);
-
         Ok(Program {
             gl,
             program,
             indices_buffer,
             attributes,
             objects: desc.objects,
+            render_side: desc.render_side,
         })
     }
 
@@ -42,6 +64,8 @@ impl Program {
     }
 
     pub fn render(&self) {
+        self.choose_render_side();
+
         if let Some((_buffer, n)) = self.indices_buffer.as_ref() {
             self.gl.draw_elements_with_i32(
                 WebGlRenderingContext::TRIANGLES,
@@ -52,6 +76,23 @@ impl Program {
         } else {
             self.gl.draw_arrays(WebGlRenderingContext::TRIANGLES, 0, 3);
         }
+    }
+
+    fn choose_render_side(&self) {
+        let cull_face = match self.render_side {
+            RenderSide::FrontSide => WebGlRenderingContext::BACK,
+            RenderSide::BackSide => WebGlRenderingContext::FRONT,
+            RenderSide::DoubleSide => WebGlRenderingContext::FRONT_AND_BACK,
+        };
+        self.gl.enable(WebGlRenderingContext::CULL_FACE);
+        self.gl.cull_face(cull_face);
+
+        let winding = match self.render_side {
+            RenderSide::FrontSide => WebGlRenderingContext::CCW,
+            RenderSide::BackSide => WebGlRenderingContext::CW,
+            RenderSide::DoubleSide => WebGlRenderingContext::CCW,
+        };
+        self.gl.front_face(winding);
     }
 
     pub fn set_attributes(&self) {
@@ -147,11 +188,16 @@ impl Program {
         canvas.set_width(canvas.client_width() as u32);
         canvas.set_height(canvas.client_height() as u32);
 
-        gl.enable(WebGlRenderingContext::CULL_FACE);
         gl.enable(WebGlRenderingContext::DEPTH_TEST | WebGlRenderingContext::DEPTH_BUFFER_BIT);
-        gl.front_face(WebGlRenderingContext::CCW);
-        gl.cull_face(WebGlRenderingContext::BACK);
         gl.depth_func(WebGlRenderingContext::LEQUAL);
+
+        gl.enable(WebGlRenderingContext::BLEND);
+        gl.blend_func_separate(
+            WebGlRenderingContext::SRC_ALPHA,
+            WebGlRenderingContext::ONE_MINUS_SRC_ALPHA,
+            WebGlRenderingContext::ONE,
+            WebGlRenderingContext::ONE_MINUS_SRC_ALPHA,
+        );
 
         dom::resize_canvas_to_window_size(canvas_id);
 
