@@ -17,7 +17,25 @@ use crate::dom;
 
 impl App {
     pub fn new() -> Result<App, JsValue> {
-        let vertex_source = r#"
+        let canvas = dom::canvas("canvas");
+        let gl = dom::canvas_context::<WebGlRenderingContext>(&canvas, "webgl");
+        let cube_program = App::get_cube_program(&App::get_vertex_source(), &App::get_fragment_source())?;
+
+        let sphere_objects = vec![Object {
+            translation: [0.0, 0.0, 0.0],
+            rotation: [0.0, 0.0, 0.0],
+        }];
+        let sphere_program =
+            App::get_sphere_program(&App::get_vertex_source(), &App::get_fragment_source(), sphere_objects)?;
+
+        Ok(App {
+            gl,
+            programs: vec![cube_program, sphere_program],
+        })
+    }
+
+    fn get_vertex_source() -> &'static str {
+        r#"
         attribute vec4 a_position;
         attribute vec4 a_color;
         attribute vec3 a_normal;
@@ -34,8 +52,11 @@ impl App {
           v_color = a_color;
           v_normal = mat3(u_normal_matrix) * a_normal;
         }
-    "#;
-        let fragment_source = r#"
+      "#
+    }
+
+    fn get_fragment_source() -> &'static str {
+        r#"
         precision mediump float;
 
         uniform vec3 u_light_direction;
@@ -47,15 +68,22 @@ impl App {
           float light = max(dot(v_normal, u_light_direction), 0.0);
           gl_FragColor = vec4(v_color.rgb * light, 1.0);
         }
-    "#;
+    "#
+    }
 
+    fn get_sphere_program(
+        vertex_source: &str,
+        fragment_source: &str,
+        objects: Vec<Object>,
+    ) -> Result<Program, JsValue> {
         let sphere = Sphere::new(1.0, 128, 128, 0.0, TAU, 0.0, TAU);
         let sphere_colors = sphere.indices.iter().map(|_| 1.0).collect();
-        let sphere_program = Program::new(
+        Program::new(
             "canvas",
             ProgramDescription {
                 vertex_source,
                 fragment_source,
+                objects,
                 indices: Some(sphere.indices),
                 attributes: vec![
                     Attribute {
@@ -74,16 +102,14 @@ impl App {
                         vertices: sphere.normals,
                     },
                 ],
-                objects: vec![Object {
-                    translation: [0.0, 0.0, 0.0],
-                    rotation: [0.0, 0.0, 0.0],
-                }],
             },
-        )?;
+        )
+    }
 
+    fn get_cube_program(vertex_source: &str, fragment_source: &str) -> Result<Program, JsValue> {
         let cube = Cube::new(1, 1, 1);
         let cube_colors = [1.0; 96];
-        let cube_program = Program::new(
+        Program::new(
             "canvas",
             ProgramDescription {
                 vertex_source,
@@ -117,14 +143,7 @@ impl App {
                     },
                 ],
             },
-        )?;
-
-        let canvas = dom::canvas("canvas");
-        let gl = dom::canvas_context::<WebGlRenderingContext>(&canvas, "webgl");
-        Ok(App {
-            gl,
-            programs: vec![cube_program, sphere_program],
-        })
+        )
     }
 
     fn get_light_direction(&self) -> UniformValue {
