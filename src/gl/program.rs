@@ -18,6 +18,8 @@ pub struct ProgramDescription<'a> {
     pub attributes: Vec<Attribute>,
     pub objects: Vec<Object>,
     pub render_side: RenderSide,
+    pub render_primitive: u32,
+    pub number_of_vertices: i32,
 }
 
 impl Default for ProgramDescription<'_> {
@@ -29,6 +31,8 @@ impl Default for ProgramDescription<'_> {
             attributes: vec![],
             objects: vec![],
             render_side: RenderSide::FrontSide,
+            render_primitive: WebGlRenderingContext::TRIANGLES,
+            number_of_vertices: 3,
         }
     }
 }
@@ -40,6 +44,8 @@ pub struct Program {
     pub attributes: Vec<AttributeLocation>,
     pub objects: Vec<Object>,
     pub render_side: RenderSide,
+    pub render_primitive: u32,
+    pub number_of_vertices: i32,
 }
 
 impl Program {
@@ -55,6 +61,8 @@ impl Program {
             attributes,
             objects: desc.objects,
             render_side: desc.render_side,
+            render_primitive: desc.render_primitive,
+            number_of_vertices: desc.number_of_vertices,
         })
     }
 
@@ -67,14 +75,10 @@ impl Program {
         self.choose_render_side();
 
         if let Some((_buffer, n)) = self.indices_buffer.as_ref() {
-            self.gl.draw_elements_with_i32(
-                WebGlRenderingContext::TRIANGLES,
-                *n,
-                WebGlRenderingContext::UNSIGNED_SHORT,
-                0,
-            );
+            self.gl
+                .draw_elements_with_i32(self.render_primitive, *n, WebGlRenderingContext::UNSIGNED_SHORT, 0);
         } else {
-            self.gl.draw_arrays(WebGlRenderingContext::TRIANGLES, 0, 3);
+            self.gl.draw_arrays(self.render_primitive, 0, self.number_of_vertices);
         }
     }
 

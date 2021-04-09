@@ -5,7 +5,7 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
 use web_sys::WebGlRenderingContext;
 
-use crate::geometry::{Cube, Sphere};
+use crate::geometry::{Cube, CubicBezierCurve, Sphere};
 use crate::gl::{Attribute, AttributeType, Dimension, Object, Program, ProgramDescription, UniformValue};
 
 struct App {
@@ -21,7 +21,7 @@ impl App {
         let gl = dom::canvas_context::<WebGlRenderingContext>(&canvas, "webgl");
         let cube_program = App::get_cube_program(&App::get_vertex_source(), &App::get_fragment_source())?;
 
-        let sphere_objects = vec![Default::default()];
+        let sphere_objects = vec![Object::default()];
         let sphere_program =
             App::get_sphere_program(&App::get_vertex_source(), &App::get_fragment_source(), sphere_objects)?;
 
@@ -36,9 +36,11 @@ impl App {
             glow_objects,
         )?;
 
+        let curve_program = App::get_curve_program()?;
+
         Ok(App {
             gl,
-            programs: vec![cube_program, glow_program, sphere_program],
+            programs: vec![cube_program, sphere_program, glow_program, curve_program],
         })
     }
 
@@ -171,6 +173,49 @@ impl App {
                         ..Default::default()
                     },
                 ],
+                ..Default::default()
+            },
+        )
+    }
+
+    pub fn get_curve_program() -> Result<Program, JsValue> {
+        let vertex_source = r#"
+        attribute vec4 a_position;
+        attribute vec3 a_normal;
+
+        uniform mat4 u_model_view_matrix;
+        uniform mat4 u_projection_matrix;
+        uniform mat4 u_normal_matrix;
+
+        void main() {
+        // vec3 f = a_normal;
+          vec4 pos =  a_position;
+          gl_Position = u_projection_matrix * u_model_view_matrix * pos;
+        }
+        "#;
+        let fragment_source = r#"
+        precision mediump float;
+
+        void main() {
+          gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+        }
+        "#;
+
+        let curve = CubicBezierCurve::new([-0.5, 0.0, 0.0], [-0.25, 2.0, 0.0], [0.25, 2.0, 0.0], [0.5, 0.0, 0.0]);
+
+        Program::new(
+            "canvas",
+            ProgramDescription {
+                vertex_source,
+                fragment_source,
+                objects: vec![Object::default()],
+                attributes: vec![Attribute {
+                    name: "a_position",
+                    attribute_type: AttributeType::Vector(Dimension::D3),
+                    vertices: curve.vertices,
+                }],
+                render_primitive: WebGlRenderingContext::LINE_STRIP,
+                number_of_vertices: curve.number_of_vertices,
                 ..Default::default()
             },
         )
